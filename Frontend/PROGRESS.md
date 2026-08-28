@@ -3,7 +3,7 @@
 ## Project Status
 
 **Current phase:** Phase 0 --- Architecture & contracts\
-**Overall status:** Planning complete, implementation not started\
+**Overall status:** Phase 0.3 complete, ready for Phase 1\
 **Primary owner:** Frontend\
 **Backend:** FastAPI, owned by backend team
 
@@ -11,45 +11,51 @@
 
 # Phase 0 --- Architecture & Contracts
 
-## Status: NOT STARTED
+## Status: IN PROGRESS
 
 ### Architecture
 
--   [ ] Create React + TypeScript + Vite project
+-   [x] Create React + TypeScript + Vite project
 -   [ ] Configure Tailwind
 -   [ ] Configure shadcn/ui
 -   [ ] Configure path aliases
--   [ ] Configure ESLint/formatter
--   [ ] Establish environment variables
--   [ ] Create application shell
--   [ ] Establish feature folder structure
+-   [x] Configure ESLint/formatter
+-   [x] Establish environment variables
+-   [x] Create application shell
+-   [x] Establish feature folder structure
 
 ### Domain models
 
--   [ ] Vessel type
--   [ ] Vessel trail type
--   [ ] Oil spill incident type
--   [ ] Candidate vessel type
--   [ ] Evidence type
--   [ ] Timeline event type
--   [ ] Environment type
--   [ ] Geo types
+-   [x] Vessel type
+-   [x] Vessel trail type
+-   [x] Oil spill incident type
+-   [x] Candidate vessel type
+-   [x] Evidence type
+-   [x] Timeline event type
+-   [x] Environment type
+-   [x] Geo types
 
 ### Data layer
 
--   [ ] Define `OceanWatchDataProvider`
--   [ ] Create mock provider
--   [ ] Create FastAPI provider
--   [ ] Create API client
+-   [x] Define `OceanWatchDataProvider`
+-   [x] Create mock provider
+-   [x] Create FastAPI provider (stubbed with mock fallback)
+-   [x] Create API client
 -   [ ] Add Zod response validation
--   [ ] Add mock/API switching
+-   [x] Add mock/API switching
+
+### State management
+
+-   [x] Create map store (viewport, layer visibility)
+-   [x] Create UI store (active panel, sidebar, theme)
+-   [x] Create incident store (selection, investigation, timeline)
 
 ### Acceptance
 
--   [ ] App boots successfully
--   [ ] TypeScript passes
--   [ ] Mock provider can return typed data
--   [ ] No UI component directly depends on `fetch`
+-   [x] App boots successfully
+-   [x] TypeScript passes
+-   [x] Mock provider can return typed data
+-   [x] No UI component directly depends on `fetch`
 
 ------------------------------------------------------------------------
 
@@ -371,3 +377,16 @@ The project is ready when:
 -   Mock provider strategy defined
 -   Investigation workflow defined
 -   Progress tracking initialized
+
+## 2026-08-29
+
+-   Phase 0.3 completed:
+    -   Created API client helper (src/api/client.ts)
+    -   Created API data provider with mock fallback (src/api/apiProvider.ts)
+    -   Created Zustand stores: mapStore, uiStore, incidentStore
+    -   Created application shell with providers (src/app/providers.tsx)
+    -   Replaced default Vite demo with OceanWatch placeholder UI
+    -   Cleaned up unused Vite demo assets
+    -   Created .env.example with required environment variables
+    -   Fixed all TypeScript strict mode errors (type-only imports, class properties)
+    -   Build verification passed
