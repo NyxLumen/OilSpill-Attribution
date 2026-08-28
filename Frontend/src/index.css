@@ -2,79 +2,104 @@
  * OceanWatch Global Styles
  *
  * Base styles for the maritime intelligence dashboard.
- * Design tokens and component styles will be added in Phase 1.
+ * Uses Tailwind CSS v4 with custom theme tokens.
  */
 
-:root {
-  /* Base colors - will be replaced with design tokens in Phase 1 */
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
+@import "tailwindcss";
 
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+/**
+ * Custom theme configuration for OceanWatch
+ * These tokens define the maritime intelligence dashboard aesthetic
+ */
+@theme {
+  /* Color palette - maritime intelligence theme */
+  --color-ocean-900: #0f172a;
+  --color-ocean-800: #1e293b;
+  --color-ocean-700: #334155;
+  --color-ocean-600: #475569;
+  --color-ocean-500: #64748b;
+  --color-ocean-400: #94a3b8;
+  --color-ocean-300: #cbd5e1;
+  --color-ocean-200: #e2e8f0;
+  --color-ocean-100: #f1f5f9;
 
-  --accent-cyan: #06b6d4;
-  --accent-blue: #3b82f6;
-
-  --border-color: #334155;
+  --color-cyan-accent: #06b6d4;
+  --color-blue-accent: #3b82f6;
+  --color-green-live: #22c55e;
+  --color-amber-warning: #f59e0b;
+  --color-red-alert: #ef4444;
 
   /* Typography */
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', monospace;
 
-  font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--text-primary);
-  background-color: var(--bg-primary);
-
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Shadows for glass panels */
+  --shadow-glass: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-glass-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/**
+ * Base layer styles
+ */
+@layer base {
+  :root {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--color-ocean-100);
+    background-color: var(--color-ocean-900);
+
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  #root {
+    height: 100%;
+    width: 100%;
+  }
+
+  /* Focus styles for accessibility */
+  :focus-visible {
+    outline: 2px solid var(--color-cyan-accent);
+    outline-offset: 2px;
+  }
+
+  /* Remove default button styles */
+  button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+  }
 }
 
-html,
-body {
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-}
+/**
+ * Utility layer for custom transitions
+ */
+@layer utilities {
+  /* Smooth transitions for interactive elements */
+  .transition-smooth {
+    transition-property: color, background-color, border-color;
+    transition-duration: 150ms;
+    transition-timing-function: ease-in-out;
+  }
 
-#root {
-  height: 100%;
-  width: 100%;
-}
-
-/* Focus styles for accessibility */
-:focus-visible {
-  outline: 2px solid var(--accent-cyan);
-  outline-offset: 2px;
-}
-
-/* Remove default button styles */
-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
-}
-
-/* Smooth transitions */
-* {
-  transition-property: color, background-color, border-color;
-  transition-duration: 150ms;
-  transition-timing-function: ease-in-out;
-}
-
-/* Prevent transitions on page load */
-.no-transitions * {
-  transition: none !important;
+  /* Prevent transitions on page load */
+  .no-transitions * {
+    transition: none !important;
+  }
 }

@@ -16,9 +16,9 @@
 ### Architecture
 
 -   [x] Create React + TypeScript + Vite project
--   [ ] Configure Tailwind
--   [ ] Configure shadcn/ui
--   [ ] Configure path aliases
+-   [x] Configure Tailwind
+-   [x] Configure shadcn/ui
+-   [x] Configure path aliases
 -   [x] Configure ESLint/formatter
 -   [x] Establish environment variables
 -   [x] Create application shell
@@ -390,3 +390,10 @@ The project is ready when:
     -   Created .env.example with required environment variables
     -   Fixed all TypeScript strict mode errors (type-only imports, class properties)
     -   Build verification passed
+
+-   Phase 0.4 completed (foundational setup):
+    -   Configured TypeScript path aliases (@/* -> ./src/*)
+    -   Configured Tailwind CSS v4 with @tailwindcss/vite plugin
+    -   Configured shadcn/ui prerequisites (components.json, utils.ts with cn helper)
+    -   Updated index.css with Tailwind v4 @theme directive and maritime color tokens
+    -   Build and dev server verification passed
