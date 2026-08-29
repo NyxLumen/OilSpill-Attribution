@@ -1,508 +1,569 @@
 # OceanWatch Frontend Progress
 
-## Project Status
-
-**Current phase:** Phase 1 --- Core UI Shell\
-**Overall status:** Phase 1.1 complete, ready for Phase 1.2\
-**Primary owner:** Frontend\
+**Last updated:** 2026-08-29  
+**Primary owner:** Frontend  
 **Backend:** FastAPI, owned by backend team
 
-------------------------------------------------------------------------
+## Current Status
 
-# Phase 0 --- Architecture & Contracts
+**Current phase: Phase 2 — Map Foundation**  
+**Overall: Foundation and initial UI/visual direction complete. Real map integration is next.**
 
-## Status: IN PROGRESS
+The previous tracker was inconsistent: it called the UI redesign Phase 1.2 while also listing MapLibre/deck.gl installation as unfinished, even though those packages are already installed. This file is now the implementation source of truth.
 
-### Architecture
+```text
+Phase 0   Architecture & Contracts       MOSTLY COMPLETE
+Phase 1   UI + Visual Direction            COMPLETE
+Phase 2   Map Foundation                  NEXT
+Phase 3   Deck.gl Visualization             NOT STARTED
+Phase 4   Mock Operational Data             NOT STARTED
+Phase 5   Vessel LOD / 3D                  NOT STARTED
+Phase 6   Incident Investigation           NOT STARTED
+Phase 7   Timeline / Playback               NOT STARTED
+Phase 8   FastAPI Integration               NOT STARTED
+Phase 9   Performance / Reliability         NOT STARTED
+Phase 10  Final Polish / SIH Demo           NOT STARTED
+```
 
--   [x] Create React + TypeScript + Vite project
--   [x] Configure Tailwind
--   [x] Configure shadcn/ui
--   [x] Configure path aliases
--   [x] Configure ESLint/formatter
--   [x] Establish environment variables
--   [x] Create application shell
--   [x] Establish feature folder structure
+---
+
+# Phase 0 — Architecture & Contracts
+
+## Status: MOSTLY COMPLETE
+
+### Foundation
+
+- [x] React + TypeScript + Vite
+- [x] Tailwind CSS v4
+- [x] shadcn/ui prerequisites
+- [x] Path aliases
+- [x] Environment variables
+- [x] Zustand
+- [x] TanStack Query/provider setup
+- [x] Basic application structure
 
 ### Domain models
 
--   [x] Vessel type
--   [x] Vessel trail type
--   [x] Oil spill incident type
--   [x] Candidate vessel type
--   [x] Evidence type
--   [x] Timeline event type
--   [x] Environment type
--   [x] Geo types
+- [x] Vessel
+- [x] Vessel trail
+- [x] Oil spill incident
+- [x] Candidate vessel
+- [x] Evidence
+- [x] Timeline event
+- [x] Environment
+- [x] Geo types
 
 ### Data layer
 
--   [x] Define `OceanWatchDataProvider`
--   [x] Create mock provider
--   [x] Create FastAPI provider (stubbed with mock fallback)
--   [x] Create API client
--   [ ] Add Zod response validation
--   [x] Add mock/API switching
+- [x] `OceanWatchDataProvider`
+- [x] Mock provider
+- [x] FastAPI provider boundary/stub with mock fallback
+- [x] API client
+- [x] Mock/API switching
+- [ ] Zod response validation
 
-### State management
+### State
 
--   [x] Create map store (viewport, layer visibility)
--   [x] Create UI store (active panel, sidebar, theme)
--   [x] Create incident store (selection, investigation, timeline)
-
-### Acceptance
-
--   [x] App boots successfully
--   [x] TypeScript passes
--   [x] Mock provider can return typed data
--   [x] No UI component directly depends on `fetch`
-
-------------------------------------------------------------------------
-
-# Phase 1 --- Core UI Shell
-
-## Phase 1.1: Complete UI Shell (COMPLETE)
-
-### Components Created
-
--   [x] Header component with logo, branding, status indicators
--   [x] Sidebar component with layer controls and quick actions
--   [x] DetailPanel component with incidents, vessels, settings views
--   [x] StatusBar component with viewport info and data counts
--   [x] MapArea component with map placeholder and controls
--   [x] Map controls (zoom, compass, reset view, fullscreen)
--   [x] Glass-panel aesthetic with backdrop blur
--   [x] Layer toggle UI with visibility indicators
--   [x] Search inputs in detail panels
--   [x] Filter UI for incidents panel
--   [x] Collapsible sidebar with smooth transitions
--   [x] Responsive panel system
-
-### Design System Elements
-
--   [x] Color tokens (ocean palette, accent colors)
--   [x] Typography system (sans, mono)
--   [x] Glass panel styling with backdrop blur
--   [x] Status badges (investigating, live, connected)
--   [x] Interactive button states with hover/focus
--   [x] Smooth transitions (150ms ease-in-out)
--   [x] Border styling with transparency
--   [x] Shadow system for glass panels
--   [x] Icon integration (lucide-react)
-
-### State Management
-
--   [x] UIStore: activePanel, sidebarOpen controls
--   [x] MapStore: viewport state, layer visibility toggles
--   [x] Store integration with components
+- [x] Map store
+- [x] UI store
+- [x] Incident store
 
 ### Acceptance
 
--   [x] Desktop shell visually resembles maritime intelligence aesthetic
--   [x] Panels have consistent glass-panel visual language
--   [x] Layout works without map functionality
--   [x] Sidebar collapse/expand works smoothly
--   [x] Detail panels open/close correctly
--   [x] Layer toggles update visual state
--   [x] TypeScript compilation passes
--   [x] Build succeeds without errors
+- [x] App boots
+- [x] TypeScript passes
+- [x] Build passes
+- [x] Mock provider returns typed data
+- [x] UI components do not directly call `fetch`
+- [ ] External API payloads validated with Zod
 
-## Phase 1.2: Map Integration (NEXT)
+---
 
--   [ ] Install and configure MapLibre GL
--   [ ] Install and configure deck.gl
--   [ ] Create base map with ocean styling
--   [ ] Integrate map controls with MapStore
--   [ ] Add viewport synchronization
+# Phase 1 — UI Foundation & Visual Direction
 
-------------------------------------------------------------------------
+## Status: COMPLETE
 
-# Phase 2 --- Map Foundation
+## Phase 1.1 — Core UI Shell
+
+- [x] Header
+- [x] Primary navigation
+- [x] Layer controls
+- [x] Detail panel
+- [x] Telemetry/status bar
+- [x] Map placeholder
+- [x] Map control UI
+- [x] Panel interactions
+- [x] Layer toggles
+- [x] Zustand integration
+- [x] Hover/focus states
+- [x] Responsive panel behavior
+- [x] Build verification
+
+## Phase 1.2 — Visual Direction Pass
+
+**Status: COMPLETE AS DIRECTION PASS**
+
+- [x] Light maritime palette
+- [x] Map-first composition
+- [x] White/translucent floating panels
+- [x] Reference-inspired header/search
+- [x] Navigation/layer panels
+- [x] Incident intelligence card
+- [x] Candidate vessel card
+- [x] Floating telemetry strip
+- [x] Floating map controls
+- [x] Deep navy typography
+- [x] Blue accent states
+- [x] Green LIVE state
+- [x] Warning/critical states
+
+**Visual note:** The visual system is intentionally not frozen. Final typography, spacing, density, panel placement, map contrast, motion, and interaction polish will be refined after real map/data layers exist.
+
+---
+
+# Phase 2 — Map Foundation
+
+## Status: NEXT
+
+### Dependencies
+
+Already installed in the project:
+
+- [x] `maplibre-gl`
+- [x] `react-map-gl`
+- [x] `@deck.gl/core`
+- [x] `@deck.gl/layers`
+- [x] `@deck.gl/mapbox`
+
+**Do not reinstall these packages.**
+
+### Map
+
+- [ ] Create real MapLibre map
+- [ ] Replace placeholder map
+- [ ] Set initial Arabian Sea viewport
+- [ ] Add basemap
+- [ ] Establish custom maritime map style
+- [ ] Ocean styling
+- [ ] Land styling
+- [ ] Coastlines
+- [ ] Geographic labels
+- [ ] Borders where useful
+- [ ] Terrain/bathymetry where useful
+
+### Controls
+
+- [ ] Zoom in/out
+- [ ] Compass/reset bearing
+- [ ] Reset/fly-to location
+- [ ] Fullscreen
+- [ ] 3D/pitch toggle
+
+### State/performance
+
+- [ ] Map → MapStore viewport synchronization
+- [ ] MapStore → map synchronization
+- [ ] Prevent update loops
+- [ ] Avoid React render storms during movement
+- [ ] Preserve viewport where appropriate
+
+### Acceptance
+
+- [ ] Real interactive map renders
+- [ ] Map visually approaches reference
+- [ ] Pan/zoom/rotate/pitch work
+- [ ] Controls work
+- [ ] UI floats correctly over map
+- [ ] No obvious navigation stutter
+
+---
+
+# Phase 3 — Deck.gl Visualization Engine
 
 ## Status: NOT STARTED
 
--   [ ] Install MapLibre
--   [ ] Install deck.gl
--   [ ] Create MapLibre instance
--   [ ] Create custom map style
--   [ ] Ocean styling
--   [ ] Land styling
--   [ ] Coastlines
--   [ ] Geographic labels
--   [ ] Zoom controls
--   [ ] Location control
--   [ ] 3D/pitch control
--   [ ] Map controller
--   [ ] Viewport manager
+- [ ] Deck overlay
+- [ ] Central layer construction system
+- [ ] Layer visibility integration
+- [ ] Vessel clustering
+- [ ] Vessel 2D layer
+- [ ] Heading indicators
+- [ ] Vessel picking
+- [ ] Spill polygon
+- [ ] Spill boundary
+- [ ] Spill origin
+- [ ] Vessel trails
+- [ ] Investigation path
+- [ ] Shipping lanes
+- [ ] EEZ
+- [ ] Wind placeholder
+- [ ] Current placeholder
+- [ ] Hover state
+- [ ] Click/selection state
+- [ ] Map ↔ panel synchronization
 
 ### Acceptance
 
--   [ ] Map visually approaches reference
--   [ ] Navigation works
--   [ ] No React re-render storm during map movement
+- [ ] Each layer toggles independently
+- [ ] Map entities can be selected
+- [ ] Layer state persists correctly
+- [ ] No DOM marker per vessel
 
-------------------------------------------------------------------------
+---
 
-# Phase 3 --- Deck.gl Visualization Engine
+# Phase 4 — Mock Operational Data
 
 ## Status: NOT STARTED
 
--   [ ] Deck overlay integration
--   [ ] Vessel layer
--   [ ] Spill polygon layer
--   [ ] Spill origin layer
--   [ ] Trail layer
--   [ ] Investigation path layer
--   [ ] Shipping lane layer
--   [ ] EEZ layer
--   [ ] Wind layer placeholder
--   [ ] Current layer placeholder
--   [ ] Layer visibility state
--   [ ] Hover interaction
--   [ ] Click interaction
+### Data
+
+- [ ] Realistic vessel dataset
+- [ ] Multiple vessel types
+- [ ] Mock incidents
+- [ ] Spill geometry
+- [ ] Historical trails
+- [ ] Candidate rankings
+- [ ] Evidence
+- [ ] Environment data
+
+### Simulation
+
+- [ ] Vessel movement
+- [ ] Spill progression
+- [ ] Wind/current values
+- [ ] Timeline generation
+- [ ] Deterministic scenario runner
+
+### Demo scenario
+
+- [ ] Normal traffic
+- [ ] Spill detection event
+- [ ] Spill appears
+- [ ] AIS correlation
+- [ ] Candidate ranking
+- [ ] Top candidate
+- [ ] Trace Source
+- [ ] Historical trail
+- [ ] Timeline
 
 ### Acceptance
 
--   [ ] Each layer can be toggled
--   [ ] Selecting a map entity works
--   [ ] Layer state persists correctly
+- [ ] App feels live in mock mode
+- [ ] Vessels move smoothly
+- [ ] Incident can be discovered and selected
+- [ ] Scenario is reproducible
+- [ ] No manual data editing required
 
-------------------------------------------------------------------------
+---
 
-# Phase 4 --- Mock Operational Data
+# Phase 5 — Vessel Visualization + LOD / 3D
 
 ## Status: NOT STARTED
 
--   [ ] Mock vessel dataset
--   [ ] Mock incident dataset
--   [ ] Mock trails
--   [ ] Mock candidate rankings
--   [ ] Mock environmental data
--   [ ] Vessel movement simulation
--   [ ] Spill simulation
--   [ ] Timeline generation
--   [ ] Scenario runner
+### Assets
+
+- [ ] Model registry
+- [ ] Tanker GLB
+- [ ] Cargo GLB
+- [ ] Container GLB
+- [ ] Fishing GLB
+- [ ] Patrol GLB
+- [ ] Optimize assets
+- [ ] Verify usage/licensing rights
+
+### LOD
+
+- [ ] LOD 0 clusters/dots
+- [ ] LOD 1 2D silhouettes
+- [ ] LOD 2 3D models
+- [ ] Zoom thresholds
+- [ ] Relevance override
+- [ ] Selected vessel override
+- [ ] Top candidate override
+- [ ] Hover override
+- [ ] Incident proximity override
+
+### Performance
+
+- [ ] Viewport culling
+- [ ] Shared model reuse/instancing
+- [ ] Lazy loading
+- [ ] Model caching
+- [ ] Minimal picking
+- [ ] No React-driven per-vessel animation
+- [ ] 3D profiling
 
 ### Acceptance
 
--   [ ] Application feels live
--   [ ] Vessel movement is smooth
--   [ ] Incident can be discovered and selected
--   [ ] Demo data is deterministic enough to reproduce
+- [ ] Normal traffic does not use unnecessary 3D
+- [ ] Selected vessel becomes high-detail
+- [ ] Models are reused
+- [ ] 3D remains usable at realistic traffic levels
 
-------------------------------------------------------------------------
+---
 
-# Phase 5 --- Vessel LOD / 3D
+# Phase 6 — Incident Investigation
 
 ## Status: NOT STARTED
 
--   [ ] Model registry
--   [ ] Acquire/prepare tanker model
--   [ ] Acquire/prepare cargo model
--   [ ] Acquire/prepare container model
--   [ ] Acquire/prepare fishing vessel model
--   [ ] Optimize GLB assets
--   [ ] Scenegraph layer
--   [ ] LOD manager
--   [ ] Cluster representation
--   [ ] 2D representation
--   [ ] 3D representation
--   [ ] Relevance-based LOD
--   [ ] Lazy model loading
--   [ ] Model caching
--   [ ] Viewport culling
--   [ ] Performance profiling
+- [ ] Incident selection
+- [ ] Incident detail
+- [ ] Spill extent
+- [ ] Spill origin
+- [ ] Confidence/severity/status
+- [ ] Source imagery metadata
+- [ ] Trace Source
+- [ ] Investigation mode
+- [ ] Dim unrelated layers
+- [ ] Predicted drift
+- [ ] Historical trails
+- [ ] Candidate visualization
+- [ ] Candidate ranking
+- [ ] Overall score explanation
+- [ ] Temporal correlation
+- [ ] Route correlation
+- [ ] Behavioral correlation
+- [ ] Distance
+- [ ] Evidence
+- [ ] Vessel details
 
 ### Acceptance
 
--   [ ] Normal traffic does not use unnecessary 3D
--   [ ] Selected vessel can become high-detail
--   [ ] Model assets are reused
--   [ ] 3D remains smooth at realistic traffic levels
+- [ ] Spill → source → candidate → vessel workflow works
+- [ ] Attribution is visually understandable
+- [ ] Relevant entities are highlighted
 
-------------------------------------------------------------------------
+---
 
-# Phase 6 --- Incident Investigation
+# Phase 7 — Timeline / Playback
 
 ## Status: NOT STARTED
 
--   [ ] Incident selection
--   [ ] Incident panel
--   [ ] Spill geometry
--   [ ] Confidence display
--   [ ] Trace Source action
--   [ ] Investigation mode
--   [ ] Historical vessel trails
--   [ ] Predicted drift path
--   [ ] Candidate vessel visualization
--   [ ] Candidate ranking panel
--   [ ] Vessel details
+- [ ] Timeline component
+- [ ] Timeline state
+- [ ] Play/pause
+- [ ] Previous/next
+- [ ] Scrubbing
+- [ ] Time interpolation
+- [ ] Vessel playback
+- [ ] Trail playback
+- [ ] Spill progression
+- [ ] Environment playback
+- [ ] Event markers
 
 ### Acceptance
 
--   [ ] User can go from spill → source → candidate → vessel
--   [ ] Map visually communicates attribution
--   [ ] Relevant entities are highlighted
+- [ ] Investigation can be replayed
+- [ ] Playback is smooth
+- [ ] Timeline does not cause unnecessary full-map rerenders
 
-------------------------------------------------------------------------
+---
 
-# Phase 7 --- Timeline / Playback
+# Phase 8 — FastAPI Integration
 
 ## Status: NOT STARTED
 
--   [ ] Timeline component
--   [ ] Timeline state
--   [ ] Play/pause
--   [ ] Previous/next
--   [ ] Time interpolation
--   [ ] Vessel position playback
--   [ ] Trail playback
--   [ ] Spill progression
--   [ ] Environment playback
--   [ ] Event markers
+### Contract
+
+- [ ] Confirm actual endpoints
+- [ ] Confirm response schemas
+- [ ] Confirm IDs
+- [ ] Confirm coordinate conventions
+- [ ] Confirm pagination/viewport behavior
+- [ ] Confirm timestamp/timezone conventions
+
+### Adapter
+
+- [ ] Configure API base URL
+- [ ] Implement real API provider
+- [ ] Map vessel responses
+- [ ] Map incident responses
+- [ ] Map candidate responses
+- [ ] Map trails
+- [ ] Map environment
+
+### Reliability
+
+- [ ] Zod validation
+- [ ] Loading states
+- [ ] Empty states
+- [ ] Error states
+- [ ] Retry behavior
+- [ ] Slow-request handling
+- [ ] Preserve mock mode
 
 ### Acceptance
 
--   [ ] Investigation can be replayed
--   [ ] Playback is visually smooth
--   [ ] Timeline state does not cause unnecessary full-map rerenders
+- [ ] Real backend replaces mock data
+- [ ] UI requires no backend-specific rewrite
+- [ ] Invalid payloads fail safely
+- [ ] Mock mode still works
 
-------------------------------------------------------------------------
+---
 
-# Phase 8 --- FastAPI Integration
+# Phase 9 — Performance & Reliability
 
 ## Status: NOT STARTED
 
--   [ ] Confirm backend API contract
--   [ ] Confirm response schemas
--   [ ] Configure API base URL
--   [ ] Implement API provider
--   [ ] Map backend vessel data
--   [ ] Map backend incident data
--   [ ] Map candidate data
--   [ ] Map trails
--   [ ] Map environment data
--   [ ] Handle API errors
--   [ ] Handle empty responses
--   [ ] Handle loading states
--   [ ] Test slow responses
--   [ ] Keep mock provider functional
+### Dataset tests
+
+- [ ] 100 vessels
+- [ ] 1,000 vessels
+- [ ] 5,000 vessels
+- [ ] Large historical trail dataset
+- [ ] Multiple simultaneous layers
+
+### Profiling
+
+- [ ] Map rendering
+- [ ] Deck.gl layers
+- [ ] Vessel updates
+- [ ] 3D models
+- [ ] Picking
+- [ ] React renders
+- [ ] Memory
+- [ ] Network requests
+
+### Stress cases
+
+- [ ] Fast viewport movement
+- [ ] Dense traffic
+- [ ] Timeline playback
+- [ ] Multiple overlays
+- [ ] Network throttling
+- [ ] API failure
+- [ ] Reconnect if real-time transport exists
 
 ### Acceptance
 
--   [ ] Real backend can replace mock data
--   [ ] Components do not need backend-specific rewrites
--   [ ] Invalid backend payloads fail safely
+- [ ] No obvious interaction stutter
+- [ ] No runaway memory growth
+- [ ] Large datasets degrade predictably
+- [ ] Heavy features degrade gracefully
 
-------------------------------------------------------------------------
+---
 
-# Phase 9 --- Performance / Reliability
+# Phase 10 — Final Visual Polish + SIH Demo
 
 ## Status: NOT STARTED
 
--   [ ] Test 100 vessels
--   [ ] Test 1,000 vessels
--   [ ] Test 5,000 vessels
--   [ ] Profile map rendering
--   [ ] Profile data updates
--   [ ] Profile 3D models
--   [ ] Test layer combinations
--   [ ] Reduce unnecessary React renders
--   [ ] Verify picking cost
--   [ ] Verify model caching
--   [ ] Verify lazy loading
--   [ ] Test viewport changes
--   [ ] Test network throttling
--   [ ] Test API failure
--   [ ] Test reconnect behavior if real-time transport exists
+### Visual
 
-### Acceptance
+- [ ] Full reference comparison
+- [ ] Typography pass
+- [ ] Spacing pass
+- [ ] Icon pass
+- [ ] Panel sizing/placement pass
+- [ ] Map density pass
+- [ ] Layer contrast pass
+- [ ] Selection states
+- [ ] Hover states
+- [ ] Motion pass
 
--   [ ] No obvious interaction stutter
--   [ ] No runaway memory growth
--   [ ] Large datasets are handled predictably
--   [ ] Heavy features degrade gracefully
+### UX states
 
-------------------------------------------------------------------------
+- [ ] Loading states
+- [ ] Empty states
+- [ ] Error states
+- [ ] Retry states
+- [ ] Connection states
 
-# Phase 10 --- SIH Demo Polish
+### Demo
 
-## Status: NOT STARTED
+- [ ] Scripted scenario
+- [ ] Demo mode
+- [ ] Incident alert animation
+- [ ] Spill pulse
+- [ ] Vessel selection animation
+- [ ] Investigation transition
+- [ ] Timeline polish
+- [ ] Repeatable start-to-finish demo
 
--   [ ] Scripted demo scenario
--   [ ] Demo mode toggle
--   [ ] Loading transitions
--   [ ] Incident alert animation
--   [ ] Spill pulse
--   [ ] Vessel selection animation
--   [ ] Investigation transition
--   [ ] Timeline polish
--   [ ] Final typography pass
--   [ ] Final spacing pass
--   [ ] Final icon pass
--   [ ] Empty states
--   [ ] Error states
--   [ ] Final performance test
--   [ ] Final browser test
+### Final verification
 
-### Acceptance
+- [ ] Production build
+- [ ] Browser test
+- [ ] Performance test
+- [ ] Console cleanup
+- [ ] No known P0 bugs
+- [ ] Full SIH scenario works without manual editing
 
-A presenter can demonstrate:
-
-``` text
-Normal map
-  ↓
-Spill detected
-  ↓
-Incident selected
-  ↓
-Trace source
-  ↓
-AIS correlation
-  ↓
-Candidate ranked
-  ↓
-Top vessel selected
-  ↓
-Trail inspected
-  ↓
-Timeline replayed
-```
-
-without manually editing data during the presentation.
-
-------------------------------------------------------------------------
+---
 
 # Definition of Complete
 
-The project is ready when:
+- [ ] Mock mode works end-to-end
+- [ ] FastAPI mode works end-to-end
+- [ ] Map resembles reference
+- [ ] Core UI is polished
+- [ ] Layers work independently
+- [ ] Vessel LOD works
+- [ ] 3D vessel visualization works selectively
+- [ ] Oil spill investigation works
+- [ ] Attribution is explainable
+- [ ] Timeline works
+- [ ] Search works
+- [ ] Loading/error/empty states work
+- [ ] Performance is measured
+- [ ] Demo scenario is repeatable
+- [ ] No major console errors
+- [ ] No known P0 bugs
 
--   [ ] Mock mode works end-to-end
--   [ ] FastAPI mode works end-to-end
--   [ ] Map resembles reference
--   [ ] Core UI is polished
--   [ ] Vessel LOD works
--   [ ] 3D vessel visualization works
--   [ ] Oil spill investigation works
--   [ ] Attribution works
--   [ ] Timeline works
--   [ ] Performance is measured
--   [ ] Demo scenario is repeatable
--   [ ] No major console errors
--   [ ] No known P0 bugs
-
-------------------------------------------------------------------------
+---
 
 # Change Log
 
 ## 2026-08-28
 
--   Planning completed
--   Final stack selected
--   MapLibre + deck.gl architecture selected
--   FastAPI integration boundary defined
--   Vessel LOD strategy defined
--   Mock provider strategy defined
--   Investigation workflow defined
--   Progress tracking initialized
+- Planning completed
+- Final stack selected
+- MapLibre + deck.gl architecture selected
+- FastAPI boundary defined
+- Vessel LOD strategy defined
+- Mock provider strategy defined
+- Investigation workflow defined
 
 ## 2026-08-29
 
--   Phase 0.3 completed:
-    -   Created API client helper (src/api/client.ts)
-    -   Created API data provider with mock fallback (src/api/apiProvider.ts)
-    -   Created Zustand stores: mapStore, uiStore, incidentStore
-    -   Created application shell with providers (src/app/providers.tsx)
-    -   Replaced default Vite demo with OceanWatch placeholder UI
-    -   Cleaned up unused Vite demo assets
-    -   Created .env.example with required environment variables
-    -   Fixed all TypeScript strict mode errors (type-only imports, class properties)
-    -   Build verification passed
+### Phase 0
 
--   Phase 0.4 completed (foundational setup):
-    -   Configured TypeScript path aliases (@/* -> ./src/*)
-    -   Configured Tailwind CSS v4 with @tailwindcss/vite plugin
-    -   Configured shadcn/ui prerequisites (components.json, utils.ts with cn helper)
-    -   Updated index.css with Tailwind v4 @theme directive and maritime color tokens
-    -   Build and dev server verification passed
+- [x] Project foundation
+- [x] Tailwind v4
+- [x] shadcn prerequisites
+- [x] Path aliases
+- [x] Environment configuration
+- [x] API client
+- [x] Provider boundary/mock fallback
+- [x] Zustand stores
+- [x] TanStack Query/provider setup
+- [x] Domain types
+- [ ] Zod response validation
 
--   Phase 1.1 completed (Core UI Shell):
-    -   Created complete layout system:
-        - Header component with logo, branding, live status, notifications
-        - Sidebar component with collapsible layer controls and quick actions
-        - DetailPanel component with Incidents, Vessels, and Settings views
-        - StatusBar component with viewport coordinates and data counts
-        - MapArea component with map placeholder and control buttons
-    -   Implemented glass-panel aesthetic with backdrop blur throughout
-    -   Integrated Zustand stores (UIStore for panels, MapStore for layers)
-    -   Built interactive layer toggle system with visual feedback
-    -   Added smooth transitions and hover states
-    -   Verified all interactions: sidebar collapse, panel switching, layer toggles
-    -   TypeScript compilation and build verification passed
-    -   App is fully navigable and responsive without map implementation
+### Phase 1.1
 
--   Phase 1.2 completed (Visual Design Overhaul):
-    -   Redesigned visual aesthetic from dark dashboard to light maritime theme
-    -   Implemented map-first composition with floating panels over map
-    -   Updated color palette to light maritime scheme:
-        - Light blue ocean background gradients
-        - White translucent floating panels
-        - Deep navy typography
-        - Blue primary accent, green live status, red/amber alerts
-    -   Redesigned Header component:
-        - Large rounded search bar with placeholder text
-        - OceanWatch logo with "Marine Intelligence" subtitle
-        - Current timestamp display
-        - Live status indicator
-        - Notification button
-        - White translucent background with subtle shadow
-    -   Redesigned Sidebar as floating navigation panels:
-        - Navigation panel with Map, Incidents, Vessels, Analysis, Environment, Reports
-        - Layers panel with visibility toggles (eye icons)
-        - Oil Spills row has selected/highlighted state
-        - Rounded corners, generous spacing, large icons
-        - White translucent background with subtle borders
-    -   Redesigned DetailPanel as floating intelligence panel:
-        - Incident view with "OIL SPILL DETECTED" card
-        - Incident details: ID, detection time, area, confidence with progress bar
-        - Primary "TRACE SOURCE" action button
-        - Secondary "View Timeline" action
-        - Top candidate vessel card with 91% match indicator
-        - Vessel details and "View Details" action
-        - White background with subtle shadow
-    -   Redesigned StatusBar as floating telemetry strip:
-        - Centered at bottom of viewport
-        - Shows: 12,482 vessels, 7 active spills, 3 alerts
-        - Region: Arabian Sea
-        - Position coordinates
-        - Wind: 14.6 kn, NW
-        - Current: 0.8 kn, SE
-        - Rounded-full design with separators
-        - White translucent background
-    -   Redesigned MapArea with light maritime aesthetic:
-        - Light blue/cyan gradient background
-        - Floating map controls in bottom-right
-        - Compact zoom (+/-) buttons
-        - Compass/reset and 3D buttons
-        - White translucent controls with subtle shadows
-        - Updated crosshair to blue accent color
-        - Light map placeholder with updated styling
-    -   Updated App component for map-first layout:
-        - Removed dark background color
-        - Made map viewport full width/height
-        - Positioned all panels as floating elements over map
-        - Maintained existing component architecture
-    -   Updated design tokens in index.css:
-        - Added light maritime color palette
-        - Updated shadows for floating panels
-        - Added surface colors for white/translucent panels
-        - Updated root text color to deep navy
-        - Updated root background to light color
-    -   Maintained all existing functionality:
-        - Zustand stores unchanged
-        - Component architecture preserved
-        - All interactions still work
-        - TypeScript types intact
-    -   Build verification: ✅ Passed
-    -   Lint verification: ✅ Passed (1 minor warning)
-    -   TypeScript compilation: ✅ No errors
+- [x] Core OceanWatch UI shell
+- [x] Header/navigation/layer/detail/telemetry/map placeholder
+- [x] Layer interactions
+- [x] Panel interactions
+- [x] Build verification
+
+### Phase 1.2
+
+- [x] Light maritime visual direction
+- [x] Map-first floating composition
+- [x] Reference-inspired header/search
+- [x] Navigation/layer panels
+- [x] Incident intelligence card
+- [x] Candidate vessel card
+- [x] Floating telemetry
+- [x] Floating map controls
+- [x] Build/type verification
+
+### Current truth
+
+- MapLibre/deck.gl packages are already installed.
+- The actual map is still a placeholder.
+- Core operational mock visualization is not complete.
+- 3D vessel visualization is not implemented.
+- FastAPI is not integrated end-to-end.
+- Final visual polish is intentionally deferred until real map/data layers exist.
