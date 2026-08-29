@@ -36,3 +36,8 @@ export type LayerVisibility = Record<MapLayerId, boolean>;
  * Map coordinate bounds as [minLng, minLat, maxLng, maxLat]
  */
 export type Bounds = [number, number, number, number];
+
+/**
+ * Terrain rendering mode for MapLibre
+ */
+export type TerrainMode = 'flat' | 'hillshade' | '3d';

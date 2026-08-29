@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { LayerVisibility, MapLayerId, MapViewport } from '../types/map';
+import type { LayerVisibility, MapLayerId, MapViewport, TerrainMode } from '../types/map';
 
 /**
  * Default layer visibility state.
@@ -34,10 +34,14 @@ const DEFAULT_VIEWPORT: MapViewport = {
 interface MapState {
   viewport: MapViewport;
   layerVisibility: LayerVisibility;
+  terrainMode: TerrainMode;
 
   // Viewport actions
   setViewport: (viewport: Partial<MapViewport>) => void;
   resetViewport: () => void;
+
+  // Terrain actions
+  setTerrainMode: (mode: TerrainMode) => void;
 
   // Layer actions
   setLayerVisibility: (layerId: MapLayerId, visible: boolean) => void;
@@ -58,6 +62,9 @@ interface MapState {
 export const useMapStore = create<MapState>((set) => ({
   viewport: DEFAULT_VIEWPORT,
   layerVisibility: DEFAULT_LAYER_VISIBILITY,
+  terrainMode: 'flat',
+
+  setTerrainMode: (mode) => set({ terrainMode: mode }),
 
   setViewport: (viewport) =>
     set((state) => ({

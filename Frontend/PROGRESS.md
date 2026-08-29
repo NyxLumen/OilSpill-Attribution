@@ -123,7 +123,7 @@ Phase 10  Final Polish / SIH Demo           NOT STARTED
 
 # Phase 2 — Map Foundation
 
-## Status: IN PROGRESS (Basemap Milestone COMPLETE)
+## Status: COMPLETE (Basemap & Terrain Foundation COMPLETE)
 
 ### Dependencies
 
@@ -147,7 +147,7 @@ Already installed in the project:
 - [x] Coastlines
 - [x] Geographic labels
 - [x] Borders where useful
-- [ ] Terrain/bathymetry where useful
+- [x] Terrain/relief foundation (Flat, Hillshade Relief, and 3D DEM Terrain modes via AWS Terrarium DEM)
 
 ### Controls
 
@@ -155,12 +155,13 @@ Already installed in the project:
 - [x] Compass/reset bearing
 - [x] Reset/fly-to location
 - [ ] Fullscreen
-- [x] 3D/pitch toggle
+- [x] 3D / Terrain mode toggle (Flat, Relief, 3D)
 
 ### State/performance
 
 - [x] Map → MapStore viewport synchronization
 - [x] MapStore → map synchronization
+- [x] Terrain mode state management (`flat`, `hillshade`, `3d`)
 - [x] Prevent update loops
 - [x] Avoid React render storms during movement
 - [x] Preserve viewport where appropriate
@@ -559,9 +560,12 @@ Already installed in the project:
 
 ### Current truth
 
-- MapLibre/deck.gl packages are already installed.
-- The actual map is still a placeholder.
+- MapLibre basemap is implemented and browser verified.
+- Arabian Sea viewport is implemented and browser verified.
+- Terrain foundation (Flat, Hillshade Relief, and 3D DEM Terrain) is implemented and browser verified.
+- Deck.gl MapboxOverlay foundation is implemented and browser verified.
 - Core operational mock visualization is not complete.
+- Vessel visualization is not implemented yet.
 - 3D vessel visualization is not implemented.
 - FastAPI is not integrated end-to-end.
 - Final visual polish is intentionally deferred until real map/data layers exist.
