@@ -4,6 +4,7 @@ import * as maplibregl from 'maplibre-gl';
 import maplibreglWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import { Plus, Minus, Compass, Crosshair } from 'lucide-react';
 import { useMapStore } from '@/store';
+import { DeckGLOverlay, useDeckLayers } from '@/map';
 
 // Explicitly configure MapLibre worker URL for Vite dev/prod bundling
 maplibregl.setWorkerUrl(maplibreglWorkerUrl);
@@ -133,6 +134,7 @@ function CrosshairOverlay() {
 export function MapArea() {
   const mapRef = useRef<MapRef | null>(null);
   const { viewport, setViewport } = useMapStore();
+  const deckLayers = useDeckLayers();
 
   const handleMove = useCallback((evt: ViewStateChangeEvent) => {
     setViewport({
@@ -168,7 +170,10 @@ export function MapArea() {
         }}
         style={{ width: '100%', height: '100%' }}
         attributionControl={false}
-      />
+      >
+        {/* Deck.gl WebGL Layer Overlay */}
+        <DeckGLOverlay layers={deckLayers} />
+      </Map>
 
       {/* Crosshair */}
       <CrosshairOverlay />

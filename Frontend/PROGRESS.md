@@ -6,16 +6,16 @@
 
 ## Current Status
 
-**Current phase: Phase 2 — Map Foundation**  
-**Overall: MapLibre basemap integration complete and browser verified. Deck.gl layer integration is next.**
+**Current phase: Phase 3 — Deck.gl Visualization Engine**  
+**Overall: MapLibre basemap and Deck.gl overlay foundation complete and browser verified. Deck.gl layer visualization (vessels, spills, trails) is next.**
 
 The previous tracker was inconsistent: it called the UI redesign Phase 1.2 while also listing MapLibre/deck.gl installation as unfinished, even though those packages are already installed. This file is now the implementation source of truth.
 
 ```text
 Phase 0   Architecture & Contracts       MOSTLY COMPLETE
 Phase 1   UI + Visual Direction            COMPLETE
-Phase 2   Map Foundation                  IN PROGRESS
-Phase 3   Deck.gl Visualization             NOT STARTED
+Phase 2   Map Foundation                  COMPLETE
+Phase 3   Deck.gl Visualization             IN PROGRESS
 Phase 4   Mock Operational Data             NOT STARTED
 Phase 5   Vessel LOD / 3D                  NOT STARTED
 Phase 6   Incident Investigation           NOT STARTED
@@ -178,11 +178,11 @@ Already installed in the project:
 
 # Phase 3 — Deck.gl Visualization Engine
 
-## Status: NOT STARTED
+## Status: IN PROGRESS (Deck.gl Overlay Foundation COMPLETE)
 
-- [ ] Deck overlay
-- [ ] Central layer construction system
-- [ ] Layer visibility integration
+- [x] Deck overlay (`DeckGLOverlay` via `@deck.gl/mapbox` MapboxOverlay)
+- [x] Central layer construction system (`useDeckLayers` hook)
+- [x] Layer visibility integration structure (`useMapStore.layerVisibility`)
 - [ ] Vessel clustering
 - [ ] Vessel 2D layer
 - [ ] Heading indicators
