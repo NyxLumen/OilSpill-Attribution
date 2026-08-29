@@ -21,8 +21,8 @@ const DEFAULT_LAYER_VISIBILITY: LayerVisibility = {
  * Coordinates can be adjusted based on actual operational area.
  */
 const DEFAULT_VIEWPORT: MapViewport = {
-  longitude: -5.0,
-  latitude: 36.0,
+  longitude: 67.0,
+  latitude: 18.0,
   zoom: 6,
   pitch: 0,
   bearing: 0,

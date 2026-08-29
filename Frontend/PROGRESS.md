@@ -7,14 +7,14 @@
 ## Current Status
 
 **Current phase: Phase 2 — Map Foundation**  
-**Overall: Foundation and initial UI/visual direction complete. Real map integration is next.**
+**Overall: MapLibre basemap integration complete and browser verified. Deck.gl layer integration is next.**
 
 The previous tracker was inconsistent: it called the UI redesign Phase 1.2 while also listing MapLibre/deck.gl installation as unfinished, even though those packages are already installed. This file is now the implementation source of truth.
 
 ```text
 Phase 0   Architecture & Contracts       MOSTLY COMPLETE
 Phase 1   UI + Visual Direction            COMPLETE
-Phase 2   Map Foundation                  NEXT
+Phase 2   Map Foundation                  IN PROGRESS
 Phase 3   Deck.gl Visualization             NOT STARTED
 Phase 4   Mock Operational Data             NOT STARTED
 Phase 5   Vessel LOD / 3D                  NOT STARTED
@@ -123,7 +123,7 @@ Phase 10  Final Polish / SIH Demo           NOT STARTED
 
 # Phase 2 — Map Foundation
 
-## Status: NEXT
+## Status: IN PROGRESS (Basemap Milestone COMPLETE)
 
 ### Dependencies
 
@@ -135,46 +135,44 @@ Already installed in the project:
 - [x] `@deck.gl/layers`
 - [x] `@deck.gl/mapbox`
 
-**Do not reinstall these packages.**
-
 ### Map
 
-- [ ] Create real MapLibre map
-- [ ] Replace placeholder map
-- [ ] Set initial Arabian Sea viewport
-- [ ] Add basemap
-- [ ] Establish custom maritime map style
-- [ ] Ocean styling
-- [ ] Land styling
-- [ ] Coastlines
-- [ ] Geographic labels
-- [ ] Borders where useful
+- [x] Create real MapLibre map
+- [x] Replace placeholder map
+- [x] Set initial Arabian Sea viewport (67.0°E, 18.0°N)
+- [x] Add basemap (Carto Positron GL style)
+- [x] Establish custom maritime map style
+- [x] Ocean styling
+- [x] Land styling
+- [x] Coastlines
+- [x] Geographic labels
+- [x] Borders where useful
 - [ ] Terrain/bathymetry where useful
 
 ### Controls
 
-- [ ] Zoom in/out
-- [ ] Compass/reset bearing
-- [ ] Reset/fly-to location
+- [x] Zoom in/out
+- [x] Compass/reset bearing
+- [x] Reset/fly-to location
 - [ ] Fullscreen
-- [ ] 3D/pitch toggle
+- [x] 3D/pitch toggle
 
 ### State/performance
 
-- [ ] Map → MapStore viewport synchronization
-- [ ] MapStore → map synchronization
-- [ ] Prevent update loops
-- [ ] Avoid React render storms during movement
-- [ ] Preserve viewport where appropriate
+- [x] Map → MapStore viewport synchronization
+- [x] MapStore → map synchronization
+- [x] Prevent update loops
+- [x] Avoid React render storms during movement
+- [x] Preserve viewport where appropriate
 
 ### Acceptance
 
-- [ ] Real interactive map renders
-- [ ] Map visually approaches reference
-- [ ] Pan/zoom/rotate/pitch work
-- [ ] Controls work
-- [ ] UI floats correctly over map
-- [ ] No obvious navigation stutter
+- [x] Real interactive map renders
+- [x] Map visually approaches reference
+- [x] Pan/zoom/rotate/pitch work
+- [x] Controls work
+- [x] UI floats correctly over map
+- [x] No obvious navigation stutter
 
 ---
 

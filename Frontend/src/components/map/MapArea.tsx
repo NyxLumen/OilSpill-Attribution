@@ -1,24 +1,67 @@
+import { useRef, useCallback, useState } from 'react';
+import Map, { type MapRef, type ViewStateChangeEvent } from 'react-map-gl/maplibre';
+import * as maplibregl from 'maplibre-gl';
+import maplibreglWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import { Plus, Minus, Compass, Crosshair } from 'lucide-react';
 import { useMapStore } from '@/store';
+
+// Explicitly configure MapLibre worker URL for Vite dev/prod bundling
+maplibregl.setWorkerUrl(maplibreglWorkerUrl);
+maplibregl.config.WORKER_URL = maplibreglWorkerUrl;
+
+/**
+ * Standard Positron basemap style (light maritime theme)
+ */
+const BASEMAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
 /**
  * Map Controls Component
  *
  * Floating zoom, compass, and viewport controls for the map.
  */
-function MapControls() {
-  const { viewport, setViewport, resetViewport } = useMapStore();
+function MapControls({ mapRef }: { mapRef: React.RefObject<MapRef | null> }) {
+  const { viewport, resetViewport, setViewport } = useMapStore();
+  const [is3D, setIs3D] = useState(false);
 
   const handleZoomIn = () => {
-    setViewport({ zoom: Math.min(viewport.zoom + 1, 18) });
+    if (mapRef.current) {
+      mapRef.current.zoomIn();
+    } else {
+      setViewport({ zoom: Math.min(viewport.zoom + 1, 18) });
+    }
   };
 
   const handleZoomOut = () => {
-    setViewport({ zoom: Math.max(viewport.zoom - 1, 1) });
+    if (mapRef.current) {
+      mapRef.current.zoomOut();
+    } else {
+      setViewport({ zoom: Math.max(viewport.zoom - 1, 1) });
+    }
   };
 
   const handleResetView = () => {
     resetViewport();
+    if (mapRef.current) {
+      mapRef.current.flyTo({
+        center: [67.0, 18.0],
+        zoom: 6,
+        pitch: 0,
+        bearing: 0,
+        duration: 1200,
+      });
+      setIs3D(false);
+    }
+  };
+
+  const handleToggle3D = () => {
+    if (mapRef.current) {
+      const nextPitch = is3D ? 0 : 60;
+      mapRef.current.easeTo({
+        pitch: nextPitch,
+        duration: 800,
+      });
+      setIs3D(!is3D);
+    }
   };
 
   return (
@@ -56,8 +99,11 @@ function MapControls() {
         </button>
         <button
           type="button"
-          className="w-12 h-12 rounded-xl bg-surface-transparent backdrop-blur-md border border-border-subtle shadow-floating flex items-center justify-center text-ocean-600 hover:text-ocean-900 hover:bg-ocean-50 transition-smooth"
-          aria-label="3D view"
+          onClick={handleToggle3D}
+          className={`w-12 h-12 rounded-xl bg-surface-transparent backdrop-blur-md border border-border-subtle shadow-floating flex items-center justify-center transition-smooth ${
+            is3D ? 'text-blue-accent font-bold bg-blue-50' : 'text-ocean-600 hover:text-ocean-900 hover:bg-ocean-50'
+          }`}
+          aria-label="Toggle 3D view"
         >
           <span className="text-xs font-medium">3D</span>
         </button>
@@ -80,75 +126,55 @@ function CrosshairOverlay() {
 }
 
 /**
- * Map Placeholder Component
- *
- * Light maritime map placeholder for Phase 1.2 visual design.
- */
-function MapPlaceholder() {
-  return (
-    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-cyan-accent/5 via-blue-accent/3 to-ocean-50">
-      <div className="text-center max-w-md">
-        {/* Map Icon */}
-        <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-surface-transparent backdrop-blur-md border border-border-subtle flex items-center justify-center shadow-floating">
-          <svg
-            className="w-12 h-12 text-blue-accent"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 13V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
-            />
-          </svg>
-        </div>
-
-        {/* Title */}
-        <h2 className="text-lg font-medium text-ocean-800 mb-2">
-          Interactive Maritime Map
-        </h2>
-
-        {/* Tech Stack */}
-        <p className="text-sm text-ocean-600 mb-4">
-          MapLibre GL + deck.gl
-        </p>
-
-        {/* Features List */}
-        <div className="flex flex-wrap justify-center gap-2 text-xs text-ocean-700">
-          <span className="px-3 py-1 rounded-full bg-surface-transparent border border-border-subtle">
-            Vessel Tracking
-          </span>
-          <span className="px-3 py-1 rounded-full bg-surface-transparent border border-border-subtle">
-            Oil Spill Detection
-          </span>
-          <span className="px-3 py-1 rounded-full bg-surface-transparent border border-border-subtle">
-            Investigation Paths
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
  * OceanWatch Map Area Component
  *
- * Main map viewport with controls.
- * Light maritime aesthetic for Phase 1.2.
+ * Main interactive MapLibre map viewport with controls.
  */
 export function MapArea() {
+  const mapRef = useRef<MapRef | null>(null);
+  const { viewport, setViewport } = useMapStore();
+
+  const handleMove = useCallback((evt: ViewStateChangeEvent) => {
+    setViewport({
+      longitude: evt.viewState.longitude,
+      latitude: evt.viewState.latitude,
+      zoom: evt.viewState.zoom,
+      bearing: evt.viewState.bearing,
+      pitch: evt.viewState.pitch,
+    });
+  }, [setViewport]);
+
   return (
-    <main className="flex-1 relative overflow-hidden">
-      {/* Map Placeholder */}
-      <MapPlaceholder />
+    <main className="w-full h-full absolute inset-0 overflow-hidden bg-ocean-50">
+      {/* MapLibre Map Container */}
+      <Map
+        ref={mapRef}
+        mapLib={maplibregl}
+        initialViewState={{
+          longitude: viewport.longitude,
+          latitude: viewport.latitude,
+          zoom: viewport.zoom,
+          bearing: viewport.bearing ?? 0,
+          pitch: viewport.pitch ?? 0,
+        }}
+        mapStyle={BASEMAP_STYLE}
+        onMove={handleMove}
+        onLoad={(evt) => {
+          (window as unknown as { mapInstance?: unknown }).mapInstance = evt.target;
+          console.log('[MapArea] Map loaded successfully', evt.target);
+        }}
+        onError={(err) => {
+          console.error('[MapArea] Map error event:', err);
+        }}
+        style={{ width: '100%', height: '100%' }}
+        attributionControl={false}
+      />
 
       {/* Crosshair */}
       <CrosshairOverlay />
 
       {/* Map Controls */}
-      <MapControls />
+      <MapControls mapRef={mapRef} />
 
       {/* Scale Indicator */}
       <div className="absolute bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-transparent backdrop-blur-md border border-border-subtle text-xs text-ocean-600 z-10 shadow-floating">
