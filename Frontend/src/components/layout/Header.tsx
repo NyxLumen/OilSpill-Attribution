@@ -1,81 +1,81 @@
-import { Activity, Menu, Bell, Settings, Radio } from 'lucide-react';
+import { Activity, Search, Bell, Clock } from 'lucide-react';
 import { useUIStore } from '@/store';
 
 /**
  * OceanWatch Header Component
  *
- * Top navigation bar with logo, status indicators, and controls.
- * Follows the glass-panel aesthetic from PRD §31.
+ * Floating header with search bar, branding, and status.
+ * Light maritime aesthetic with translucent white background.
  */
 export function Header() {
-  const { toggleSidebar, sidebarOpen } = useUIStore();
+  const { setActivePanel } = useUIStore();
+
+  // Get current time for timestamp display
+  const getCurrentTime = () => {
+    return new Date().toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  };
 
   return (
-    <header className="h-14 flex items-center justify-between px-4 bg-ocean-800/95 backdrop-blur-sm border-b border-ocean-700/50">
+    <header className="h-20 flex items-center justify-between px-6 bg-surface-transparent backdrop-blur-md border-b border-border-subtle shadow-floating">
       {/* Left Section: Logo & Branding */}
-      <div className="flex items-center gap-3">
-        {/* Sidebar Toggle */}
-        <button
-          type="button"
-          onClick={toggleSidebar}
-          className="p-2 rounded-lg text-ocean-400 hover:text-ocean-200 hover:bg-ocean-700/50 transition-smooth"
-          aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
+      <div className="flex items-center gap-4">
         {/* Logo */}
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-accent to-blue-accent flex items-center justify-center shadow-lg shadow-cyan-accent/20">
-            <Activity className="w-5 h-5 text-white" />
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-accent to-cyan-accent flex items-center justify-center shadow-lg shadow-blue-accent/20">
+            <Activity className="w-6 h-6 text-white" />
           </div>
           <div className="flex flex-col">
-            <h1 className="text-base font-semibold text-white tracking-tight">OceanWatch</h1>
-            <span className="text-[10px] text-ocean-500 -mt-0.5">Maritime Intelligence</span>
+            <h1 className="text-lg font-bold text-ocean-900 tracking-tight">OceanWatch</h1>
+            <span className="text-xs text-ocean-600 -mt-0.5 uppercase tracking-wider">Marine Intelligence</span>
           </div>
         </div>
       </div>
 
-      {/* Center Section: Status Bar */}
+      {/* Center Section: Search Bar */}
+      <div className="flex-1 max-w-2xl mx-8">
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search className="w-5 h-5 text-ocean-500" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search location, vessel, or incident..."
+            className="w-full h-12 px-4 pl-12 py-2 rounded-full bg-surface-white border border-border-subtle focus:outline-none focus:ring-2 focus:ring-blue-accent focus:border-transparent text-sm text-ocean-800 placeholder-ocean-500 transition-smooth"
+          />
+        </div>
+      </div>
+
+      {/* Right Section: Timestamp & Status */}
       <div className="flex items-center gap-6">
+        {/* Current Time */}
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-ocean-500" />
+          <span className="text-sm font-medium text-ocean-800">{getCurrentTime()}</span>
+        </div>
+
         {/* Live Status */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-ocean-700/60 border border-ocean-600/50">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-live/10 border border-green-live/20">
           <div className="relative">
             <div className="w-2 h-2 rounded-full bg-green-live" />
             <div className="absolute inset-0 w-2 h-2 rounded-full bg-green-live animate-ping opacity-75" />
           </div>
-          <span className="text-xs font-medium text-ocean-300">LIVE</span>
+          <span className="text-xs font-medium text-green-live uppercase">Live</span>
         </div>
 
-        {/* Data Source */}
-        <div className="flex items-center gap-2 text-xs text-ocean-400">
-          <Radio className="w-3.5 h-3.5" />
-          <span>
-            {import.meta.env.VITE_USE_MOCK_DATA === 'true' ? 'Mock Data' : 'API Connected'}
-          </span>
-        </div>
-      </div>
-
-      {/* Right Section: Actions */}
-      <div className="flex items-center gap-2">
         {/* Notifications */}
         <button
           type="button"
-          className="relative p-2 rounded-lg text-ocean-400 hover:text-ocean-200 hover:bg-ocean-700/50 transition-smooth"
+          onClick={() => setActivePanel('incidents')}
+          className="relative p-2 rounded-lg text-ocean-600 hover:text-ocean-900 hover:bg-ocean-100 transition-smooth"
           aria-label="Notifications"
         >
           <Bell className="w-5 h-5" />
           {/* Notification badge */}
           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-alert" />
-        </button>
-
-        {/* Settings */}
-        <button
-          type="button"
-          className="p-2 rounded-lg text-ocean-400 hover:text-ocean-200 hover:bg-ocean-700/50 transition-smooth"
-          aria-label="Settings"
-        >
-          <Settings className="w-5 h-5" />
         </button>
       </div>
     </header>

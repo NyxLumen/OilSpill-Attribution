@@ -440,3 +440,69 @@ The project is ready when:
     -   Verified all interactions: sidebar collapse, panel switching, layer toggles
     -   TypeScript compilation and build verification passed
     -   App is fully navigable and responsive without map implementation
+
+-   Phase 1.2 completed (Visual Design Overhaul):
+    -   Redesigned visual aesthetic from dark dashboard to light maritime theme
+    -   Implemented map-first composition with floating panels over map
+    -   Updated color palette to light maritime scheme:
+        - Light blue ocean background gradients
+        - White translucent floating panels
+        - Deep navy typography
+        - Blue primary accent, green live status, red/amber alerts
+    -   Redesigned Header component:
+        - Large rounded search bar with placeholder text
+        - OceanWatch logo with "Marine Intelligence" subtitle
+        - Current timestamp display
+        - Live status indicator
+        - Notification button
+        - White translucent background with subtle shadow
+    -   Redesigned Sidebar as floating navigation panels:
+        - Navigation panel with Map, Incidents, Vessels, Analysis, Environment, Reports
+        - Layers panel with visibility toggles (eye icons)
+        - Oil Spills row has selected/highlighted state
+        - Rounded corners, generous spacing, large icons
+        - White translucent background with subtle borders
+    -   Redesigned DetailPanel as floating intelligence panel:
+        - Incident view with "OIL SPILL DETECTED" card
+        - Incident details: ID, detection time, area, confidence with progress bar
+        - Primary "TRACE SOURCE" action button
+        - Secondary "View Timeline" action
+        - Top candidate vessel card with 91% match indicator
+        - Vessel details and "View Details" action
+        - White background with subtle shadow
+    -   Redesigned StatusBar as floating telemetry strip:
+        - Centered at bottom of viewport
+        - Shows: 12,482 vessels, 7 active spills, 3 alerts
+        - Region: Arabian Sea
+        - Position coordinates
+        - Wind: 14.6 kn, NW
+        - Current: 0.8 kn, SE
+        - Rounded-full design with separators
+        - White translucent background
+    -   Redesigned MapArea with light maritime aesthetic:
+        - Light blue/cyan gradient background
+        - Floating map controls in bottom-right
+        - Compact zoom (+/-) buttons
+        - Compass/reset and 3D buttons
+        - White translucent controls with subtle shadows
+        - Updated crosshair to blue accent color
+        - Light map placeholder with updated styling
+    -   Updated App component for map-first layout:
+        - Removed dark background color
+        - Made map viewport full width/height
+        - Positioned all panels as floating elements over map
+        - Maintained existing component architecture
+    -   Updated design tokens in index.css:
+        - Added light maritime color palette
+        - Updated shadows for floating panels
+        - Added surface colors for white/translucent panels
+        - Updated root text color to deep navy
+        - Updated root background to light color
+    -   Maintained all existing functionality:
+        - Zustand stores unchanged
+        - Component architecture preserved
+        - All interactions still work
+        - TypeScript types intact
+    -   Build verification: ✅ Passed
+    -   Lint verification: ✅ Passed (1 minor warning)
+    -   TypeScript compilation: ✅ No errors

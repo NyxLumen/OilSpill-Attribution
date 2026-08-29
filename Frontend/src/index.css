@@ -12,30 +12,38 @@
  * These tokens define the maritime intelligence dashboard aesthetic
  */
 @theme {
-  /* Color palette - maritime intelligence theme */
-  --color-ocean-900: #0f172a;
-  --color-ocean-800: #1e293b;
-  --color-ocean-700: #334155;
-  --color-ocean-600: #475569;
-  --color-ocean-500: #64748b;
-  --color-ocean-400: #94a3b8;
-  --color-ocean-300: #cbd5e1;
-  --color-ocean-200: #e2e8f0;
-  --color-ocean-100: #f1f5f9;
+  /* Color palette - light maritime intelligence theme */
+  --color-ocean-900: #0f172a; /* Deep navy for text */
+  --color-ocean-800: #1e293b; /* Dark navy */
+  --color-ocean-700: #334155; /* Medium navy */
+  --color-ocean-600: #475569; /* Slate */
+  --color-ocean-500: #64748b; /* Light slate */
+  --color-ocean-400: #94a3b8; /* Medium gray */
+  --color-ocean-300: #cbd5e1; /* Light gray */
+  --color-ocean-200: #e2e8f0; /* Very light gray */
+  --color-ocean-100: #f1f5f9; /* Off-white */
+  --color-ocean-50: #f8fafc;  /* Pure white */
 
-  --color-cyan-accent: #06b6d4;
-  --color-blue-accent: #3b82f6;
-  --color-green-live: #22c55e;
-  --color-amber-warning: #f59e0b;
-  --color-red-alert: #ef4444;
+  --color-cyan-accent: #06b6d4; /* Cyan accent */
+  --color-blue-accent: #3b82f6; /* Blue primary */
+  --color-green-live: #22c55e; /* Green live status */
+  --color-amber-warning: #f59e0b; /* Amber warning */
+  --color-red-alert: #ef4444;   /* Red alert */
+
+  --color-surface-white: #ffffff; /* White surface */
+  --color-surface-transparent: rgba(255, 255, 255, 0.95); /* Translucent white */
+  --color-surface-glass: rgba(255, 255, 255, 0.8); /* Glass white */
+  --color-border-subtle: rgba(0, 0, 0, 0.08); /* Subtle border */
+  --color-border-medium: rgba(0, 0, 0, 0.12); /* Medium border */
 
   /* Typography */
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', monospace;
 
-  /* Shadows for glass panels */
-  --shadow-glass: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-glass-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  /* Shadows for floating panels */
+  --shadow-floating: 0 4px 12px -2px rgb(0 0 0 / 0.08), 0 2px 6px -1px rgb(0 0 0 / 0.06);
+  --shadow-floating-lg: 0 12px 24px -4px rgb(0 0 0 / 0.12), 0 6px 12px -2px rgb(0 0 0 / 0.08);
+  --shadow-subtle: 0 1px 3px 0 rgb(0 0 0 / 0.05);
 }
 
 /**
@@ -46,8 +54,8 @@
     font-family: var(--font-sans);
     font-size: 14px;
     line-height: 1.5;
-    color: var(--color-ocean-100);
-    background-color: var(--color-ocean-900);
+    color: var(--color-ocean-900); /* Deep navy text */
+    background-color: var(--color-ocean-50); /* Light background */
 
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;

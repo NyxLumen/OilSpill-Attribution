@@ -3,8 +3,8 @@ import { useMapStore } from '@/store';
 /**
  * OceanWatch Status Bar Component
  *
- * Bottom status bar showing viewport coordinates, zoom, and data counts.
- * Follows the glass-panel aesthetic from PRD §31.
+ * Floating telemetry strip with maritime data.
+ * Light aesthetic for Phase 1.2.
  */
 export function StatusBar() {
   const { viewport } = useMapStore();
@@ -14,40 +14,70 @@ export function StatusBar() {
   const lngStr = `${Math.abs(viewport.longitude).toFixed(2)}°${viewport.longitude >= 0 ? 'E' : 'W'}`;
 
   return (
-    <footer className="h-8 flex items-center justify-between px-4 bg-ocean-800/95 backdrop-blur-sm border-t border-ocean-700/50 text-xs text-ocean-400">
-      {/* Left: Viewport Info */}
-      <div className="flex items-center gap-4">
-        <span className="flex items-center gap-1.5">
-          <span className="text-ocean-500">Position:</span>
-          <span className="text-ocean-300 font-mono">
+    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-30">
+      <div className="flex items-center gap-6 px-6 py-3 rounded-full bg-surface-transparent backdrop-blur-md border border-border-subtle shadow-floating-lg text-sm">
+        {/* Vessel Count */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-ocean-600 uppercase tracking-wider">Vessels</span>
+          <span className="font-bold text-ocean-900">12,482</span>
+        </div>
+
+        {/* Separator */}
+        <span className="text-ocean-400">|</span>
+
+        {/* Active Spills */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-ocean-600 uppercase tracking-wider">Spills</span>
+          <span className="font-bold text-red-alert">7</span>
+        </div>
+
+        {/* Separator */}
+        <span className="text-ocean-400">|</span>
+
+        {/* Alerts */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-ocean-600 uppercase tracking-wider">Alerts</span>
+          <span className="font-bold text-amber-warning">3</span>
+        </div>
+
+        {/* Separator */}
+        <span className="text-ocean-400">|</span>
+
+        {/* Region */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-ocean-600 uppercase tracking-wider">Region</span>
+          <span className="font-medium text-ocean-800">Arabian Sea</span>
+        </div>
+
+        {/* Separator */}
+        <span className="text-ocean-400">|</span>
+
+        {/* Coordinates */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-ocean-600 uppercase tracking-wider">Position</span>
+          <span className="font-mono text-ocean-800">
             {latStr}, {lngStr}
           </span>
-        </span>
-        <span className="text-ocean-600">|</span>
-        <span className="flex items-center gap-1.5">
-          <span className="text-ocean-500">Zoom:</span>
-          <span className="text-ocean-300 font-mono">{viewport.zoom.toFixed(1)}</span>
-        </span>
-      </div>
+        </div>
 
-      {/* Center: Connection Status */}
-      <div className="flex items-center gap-1.5">
-        <div className="w-1.5 h-1.5 rounded-full bg-green-live" />
-        <span className="text-ocean-500">Connected</span>
-      </div>
+        {/* Separator */}
+        <span className="text-ocean-400">|</span>
 
-      {/* Right: Data Counts */}
-      <div className="flex items-center gap-4">
-        <span className="flex items-center gap-1.5">
-          <span className="text-ocean-500">Vessels:</span>
-          <span className="text-ocean-300 font-mono">--</span>
-        </span>
-        <span className="text-ocean-600">|</span>
-        <span className="flex items-center gap-1.5">
-          <span className="text-ocean-500">Incidents:</span>
-          <span className="text-ocean-300 font-mono">--</span>
-        </span>
+        {/* Wind */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-ocean-600 uppercase tracking-wider">Wind</span>
+          <span className="font-mono text-ocean-800">14.6 kn, NW</span>
+        </div>
+
+        {/* Separator */}
+        <span className="text-ocean-400">|</span>
+
+        {/* Current */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-ocean-600 uppercase tracking-wider">Current</span>
+          <span className="font-mono text-ocean-800">0.8 kn, SE</span>
+        </div>
       </div>
-    </footer>
+    </div>
   );
 }
