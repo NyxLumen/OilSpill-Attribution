@@ -562,10 +562,25 @@ Already installed in the project:
 
 - MapLibre basemap is implemented and browser verified.
 - Arabian Sea viewport is implemented and browser verified.
-- Terrain foundation (Flat, Hillshade Relief, and 3D DEM Terrain) is implemented and browser verified.
+- Terrain foundation (Flat, Hillshade Relief, and 3D DEM Terrain) is fully implemented, root cause diagnosed, fixed, and browser verified via CDP on live Chromium instance.
 - Deck.gl MapboxOverlay foundation is implemented and browser verified.
 - Core operational mock visualization is not complete.
 - Vessel visualization is not implemented yet.
 - 3D vessel visualization is not implemented.
 - FastAPI is not integrated end-to-end.
 - Final visual polish is intentionally deferred until real map/data layers exist.
+
+## 2026-08-30
+
+- **3D Terrain Browser Diagnosis & Fix**:
+  - Diagnosed live MapLibre map behavior in Chrome via DevTools CDP.
+  - Identified root causes for flat visual appearance in 3D mode:
+    1. Default viewport (`67.0°E, 18.0°N`) is located in the middle of the Arabian Sea (0m elevation), where terrain elevation is 0m and remains flat regardless of pitch.
+    2. Shared source ID (`terrain-dem`) between `hillshade` layer and 3D `map.setTerrain()` triggered MapLibre GL JS source cache contention.
+    3. Exaggeration level `1.5` was insufficient at zoomed-out scales.
+  - Fixes applied in `Frontend/src/components/map/MapArea.tsx`:
+    - Separated DEM source for 3D terrain (`terrain-dem-3d`) from Hillshade layer (`terrain-dem-hillshade`).
+    - Increased 3D terrain exaggeration to `2.5`.
+    - Dynamic 3D DEM source instantiation via MapLibre API eliminating `react-map-gl` duplicate source warnings.
+  - Verification: Visually and empirically verified all 3 modes (Flat, Relief, 3D) on Western Ghats (`75.7°E, 13.4°N`), confirming ~3164m height elevation and visible 3D mesh physical deformation.
+

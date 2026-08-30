@@ -17,8 +17,11 @@ const BASEMAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.
 
 /**
  * AWS Open Data Global Elevation (Terrarium RGB DEM)
+ * Using separate source IDs for 3D terrain mesh vs hillshade layer
+ * prevents MapLibre GL JS source cache conflicts.
  */
-const TERRAIN_SOURCE_ID = 'terrain-dem';
+const TERRAIN_SOURCE_ID = 'terrain-dem-3d';
+const HILLSHADE_SOURCE_ID = 'terrain-dem-hillshade';
 const TERRAIN_TILES_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 
 /**
@@ -38,7 +41,16 @@ function applyTerrainMode(mode: 'flat' | 'hillshade' | '3d', map: maplibregl.Map
 
     // 2. Manage 3D DEM Terrain mesh & camera pitch
     if (mode === '3d') {
-      map.setTerrain({ source: TERRAIN_SOURCE_ID, exaggeration: 1.5 });
+      if (!map.getSource(TERRAIN_SOURCE_ID)) {
+        map.addSource(TERRAIN_SOURCE_ID, {
+          type: 'raster-dem',
+          tiles: [TERRAIN_TILES_URL],
+          encoding: 'terrarium',
+          tileSize: 256,
+          maxzoom: 14,
+        });
+      }
+      map.setTerrain({ source: TERRAIN_SOURCE_ID, exaggeration: 2.5 });
       map.easeTo({ pitch: 60, duration: 800 });
     } else {
       map.setTerrain(null);
@@ -242,9 +254,9 @@ export function MapArea() {
         style={{ width: '100%', height: '100%' }}
         attributionControl={false}
       >
-        {/* Terrain Elevation DEM Source & Hillshade Layer */}
+        {/* Hillshade DEM Source & Layer */}
         <Source
-          id={TERRAIN_SOURCE_ID}
+          id={HILLSHADE_SOURCE_ID}
           type="raster-dem"
           tiles={[TERRAIN_TILES_URL]}
           encoding="terrarium"
@@ -254,6 +266,7 @@ export function MapArea() {
           <Layer
             id="terrain-hillshade"
             type="hillshade"
+            source={HILLSHADE_SOURCE_ID}
             beforeId="water"
             layout={{
               visibility: terrainMode === 'hillshade' ? 'visible' : 'none',
