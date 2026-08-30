@@ -10,6 +10,24 @@ import { DeckGLOverlay, useDeckLayers } from '@/map';
 maplibregl.setWorkerUrl(maplibreglWorkerUrl);
 maplibregl.config.WORKER_URL = maplibreglWorkerUrl;
 
+// Ensure MapLibre map.transform is aliased to painter/camera transform for @deck.gl/mapbox compatibility
+if (typeof window !== 'undefined') {
+  try {
+    Object.defineProperty(maplibregl.Map.prototype, 'transform', {
+      get() {
+        return (
+          (this as unknown as { painter?: { transform?: unknown } }).painter?.transform ??
+          (this as unknown as { _camera?: { transform?: unknown } })._camera?.transform
+        );
+      },
+      configurable: true,
+      enumerable: true,
+    });
+  } catch {
+    // Ignore if already configured
+  }
+}
+
 /**
  * Standard Positron basemap style (light maritime theme)
  */
@@ -35,7 +53,7 @@ function applyTerrainMode(mode: 'flat' | 'hillshade' | '3d', map: maplibregl.Map
       map.setLayoutProperty(
         'terrain-hillshade',
         'visibility',
-        mode === 'hillshade' ? 'visible' : 'none'
+        mode === 'hillshade' || mode === '3d' ? 'visible' : 'none'
       );
     }
 
@@ -269,7 +287,7 @@ export function MapArea() {
             source={HILLSHADE_SOURCE_ID}
             beforeId="water"
             layout={{
-              visibility: terrainMode === 'hillshade' ? 'visible' : 'none',
+              visibility: terrainMode === 'hillshade' || terrainMode === '3d' ? 'visible' : 'none',
             }}
             paint={{
               'hillshade-shadow-color': '#0f172a',
