@@ -1,12 +1,21 @@
 import { useMemo, useCallback } from 'react';
 import type { Layer } from '@deck.gl/core';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useMapStore, useIncidentStore, useUIStore } from '@/store';
 import { useDataProvider } from '@/app/providers';
 import type { VesselTrail } from '@/types/vessel';
 import { createVesselLayers } from './vesselLayer';
 import { createSpillLayers } from './spillLayer';
 import { createTrailLayers } from './trailLayer';
+
+/**
+ * Poll interval (ms) for live simulation updates on the map.
+ *
+ * The mock simulation advances a single centralized clock; these queries
+ * re-snapshot the fleet at this rate so deck.gl redraws moving vessels and
+ * their trails without per-vessel timers or per-vessel React updates.
+ */
+const SIM_POLL_MS = 300;
 
 /**
  * Hook to construct and manage the active deck.gl layers.
@@ -37,6 +46,7 @@ export function useDeckLayers(): Layer[] {
     queryKey: ['vessels'],
     queryFn: () => dataProvider.getVessels(),
     staleTime: 60 * 1000,
+    refetchInterval: SIM_POLL_MS,
   });
 
   const { data: incidents = [] } = useQuery({
@@ -58,6 +68,10 @@ export function useDeckLayers(): Layer[] {
     },
     enabled: vesselIds.length > 0,
     staleTime: 60 * 1000,
+    refetchInterval: SIM_POLL_MS,
+    // Keep the previous trails rendered while the next poll is in flight so
+    // the trail layer never flickers out between updates.
+    placeholderData: keepPreviousData,
   });
 
   // Interaction Handlers

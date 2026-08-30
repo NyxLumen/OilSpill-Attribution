@@ -1,13 +1,13 @@
 # OceanWatch Frontend Progress
 
-**Last updated:** 2026-08-29  
+**Last updated:** 2026-08-31  
 **Primary owner:** Frontend  
 **Backend:** FastAPI, owned by backend team
 
 ## Current Status
 
-**Current phase: Phase 3 — Deck.gl Visualization Engine**  
-**Overall: MapLibre basemap and Deck.gl overlay foundation complete and browser verified. Deck.gl layer visualization (vessels, spills, trails) is next.**
+**Current phase: Phase 4 — Mock Operational Data (4.1 + 4.2 Deterministic Maritime Traffic Simulation complete)**  
+**Overall: Deck.gl layer visualization foundation complete and browser verified. A deterministic 80-vessel maritime traffic simulation now powers mock mode — seeded fleet, fixed scenario epoch, live movement, and coherent historical trails, all consumed through `MockDataProvider`.**
 
 The previous tracker was inconsistent: it called the UI redesign Phase 1.2 while also listing MapLibre/deck.gl installation as unfinished, even though those packages are already installed. This file is now the implementation source of truth.
 
@@ -15,8 +15,8 @@ The previous tracker was inconsistent: it called the UI redesign Phase 1.2 while
 Phase 0   Architecture & Contracts       MOSTLY COMPLETE
 Phase 1   UI + Visual Direction            COMPLETE
 Phase 2   Map Foundation                  COMPLETE
-Phase 3   Deck.gl Visualization             IN PROGRESS
-Phase 4   Mock Operational Data             NOT STARTED
+Phase 3   Deck.gl Visualization             COMPLETE
+Phase 4   Mock Operational Data             IN PROGRESS (4.1+4.2 traffic simulation complete)
 Phase 5   Vessel LOD / 3D                  NOT STARTED
 Phase 6   Incident Investigation           NOT STARTED
 Phase 7   Timeline / Playback               NOT STARTED
@@ -212,26 +212,48 @@ Already installed in the project:
 
 # Phase 4 — Mock Operational Data
 
-## Status: NOT STARTED
+## Status: IN PROGRESS (4.1 + 4.2 deterministic traffic simulation COMPLETE)
 
 ### Data
 
-- [ ] Realistic vessel dataset
-- [ ] Multiple vessel types
-- [ ] Mock incidents
-- [ ] Spill geometry
-- [ ] Historical trails
-- [ ] Candidate rankings
-- [ ] Evidence
-- [ ] Environment data
+- [x] Realistic vessel dataset (deterministic 80-vessel fleet, 6 types, seeded)
+- [x] Multiple vessel types (tanker / cargo / container / fishing / patrol / other)
+- [x] Mock incidents (static scenario data, pre-existing)
+- [x] Spill geometry (static scenario data, pre-existing)
+- [x] Historical trails (deterministic, per-vessel, 24h span, consumes `VesselTrail`/`PathLayer`)
+- [x] Candidate rankings (static scenario data, pre-existing)
+- [x] Evidence (static scenario data, pre-existing)
+- [x] Environment data (static scenario data, pre-existing)
 
 ### Simulation
 
-- [ ] Vessel movement
+- [x] Vessel movement (deterministic route-based kinematics, centralized clock, no per-vessel timers)
 - [ ] Spill progression
-- [ ] Wind/current values
+- [ ] Wind/current values (simulated)
 - [ ] Timeline generation
-- [ ] Deterministic scenario runner
+- [x] Deterministic scenario runner (fixed seed + fixed scenario epoch, reproducible on reload)
+
+### Phase 4.1 + 4.2 — Deterministic Maritime Traffic Simulation (2026-08-31)
+
+- [x] `src/simulation/` module with seeded PRNG (`mulberry32`), route geometry, traffic lanes/circuits, and deterministic fleet generator
+- [x] 80-vessel fleet across all 6 vessel types with plausible regional distribution (Gulf of Kutch / Saurashtra, Arabian Sea)
+- [x] Spatially believable traffic: gulf/north/south corridors, coastal traffic, localized fishing grounds, patrol circuits, scattered anchored/support craft
+- [x] Realistic type behavior (tankers slow/moderate, cargo/container on corridors, fishing slow/coastal/varied, patrol localized, other mixed)
+- [x] Single centralized `SimulationEngine` clock shared by all consumers; position = pure function of (vessel, simulated time)
+- [x] Latitude-aware lat/lng deltas (`destinationPoint`); great-circle route distances
+- [x] Deterministic historical trails (72 points, 20-min interval, 24h span) ending exactly at the vessel's current position
+- [x] Movement visual tuning (`TIME_SCALE` = 2 sim-min per real second; believable on-screen AIS motion)
+- [x] `MockDataProvider` serves live simulated vessels/trails through the unchanged `OceanWatchDataProvider` contract
+- [x] `useDeckLayers` polls the fleet on a single 300 ms interval (no per-vessel timers, `keepPreviousData` prevents trail flicker)
+- [x] Static t=0 snapshot exported from `src/data/mock/vessels.ts` (identical initial world on every load)
+- [x] Incident coherence preserved: scenario core vessels (vsl-001..vsl-005) keep the INC-2026-001 narrative
+
+### Verification (4.1 + 4.2)
+
+- [x] TypeScript build passes
+- [x] Production build passes
+- [x] Node-side verification: fleet size/distribution, bit-identical determinism across two engine instances, movement rate matches kinematics, trail coherence
+- [x] Browser/CDP verification: 80 vessels × 6 types render, distinct headings/speeds, smooth movement, coherent trails, hover tooltip + click selection → DetailPanel sync, vessel & trail layer toggles, reload reproduces the initial scenario, zero console/WebGL errors, no render storm (~141 FPS, no long tasks)
 
 ### Demo scenario
 
@@ -248,9 +270,9 @@ Already installed in the project:
 ### Acceptance
 
 - [ ] App feels live in mock mode
-- [ ] Vessels move smoothly
+- [x] Vessels move smoothly (browser verified)
 - [ ] Incident can be discovered and selected
-- [ ] Scenario is reproducible
+- [x] Scenario is reproducible (seeded + fixed epoch; browser verified)
 - [ ] No manual data editing required
 
 ---
@@ -602,6 +624,38 @@ Already installed in the project:
     - Independent toggles for `vessels`, `vesselTrails`, and `oilSpills` in `useMapStore.layerVisibility`.
   - **Browser Verification**:
     - Automated CDP tests on live Chromium: 0 TypeScript errors, 0 build errors, 0 runtime exceptions, 0 WebGL errors.
+
+## 2026-08-31
+
+### Phase 4.1 + 4.2 — Deterministic Maritime Traffic Simulation
+
+**New `src/simulation/` module (10 files):**
+- `rng.ts` — seeded `mulberry32` PRNG, deterministic `pick`/`shuffle`/`randomInt`/`randomRange`.
+- `geo.ts` — great-circle distance, initial bearing, latitude-aware `destinationPoint`, `buildRoute` with cumulative distances, `pointAlongRoute`.
+- `trafficPatterns.ts` — linear corridor lanes (Gulf of Kutch, north/south lanes, coastal), fishing grounds, patrol circuits.
+- `scenario.ts` — 5 hand-authored scenario vessels (vsl-001..vsl-005) preserving the INC-2026-001 attribution narrative, with realistic IMO numbers.
+- `vesselGenerator.ts` — seeded 80-vessel fleet (11/17/13/19/7/8 generated slots over the 5-vessel core) with type-appropriate speeds, patterns, and stopped/anchored behavior.
+- `kinematics.ts` — pure position function `vesselStateAt(def, simTime)`; `TIME_SCALE` = 2 sim-min per real second; stopped-vessel drift.
+- `trailGenerator.ts` — deterministic 72-point historical trails (24h span) ending exactly at the current position.
+- `simulationEngine.ts` — centralized clock (`SCENARIO_START_MS + elapsed × TIME_SCALE`), singleton `simulationEngine`, `Vessel`/`VesselTrail` domain mapping.
+- `types.ts` + `index.ts`.
+
+**Integration:**
+- `MockDataProvider` now serves live vessels/trails from `simulationEngine` (unchanged provider contract; static incidents/candidates/timelines remain).
+- `useDeckLayers` polls vessels + trails on a single 300 ms interval; `keepPreviousData` prevents trail-layer flicker between polls.
+- `src/data/mock/vessels.ts` exports the deterministic t=0 snapshot (`MOCK_VESSELS`, `MOCK_VESSEL_TRAILS`).
+
+**Verification:**
+- `npm run build` passes; `npm run lint` passes (one pre-existing warning in `src/app/providers.tsx`).
+- Node-side script: 80 vessels, type split 12/18/14/20/8/8, bit-identical fleet across two engine instances, movement rate matches kinematics, trail endpoints coherent.
+- Browser/CDP (live Chromium): 6 deck.gl layers present (spills, trails, vessels); 80 vessels render across all types with distinct headings/speeds; vessels move smoothly at a believable rate; 76 trails × 72 points spanning 24h; hover tooltip + click selection → DetailPanel sync verified; vessel & trail layer toggles verified; two consecutive reloads reproduce the identical initial scenario; 0 console errors/warnings; no render storm (~141 FPS, no long tasks).
+
+### Current truth
+
+- Deterministic maritime traffic simulation is implemented, deterministic, and browser verified.
+- Mock mode is live: 80 moving vessels with coherent historical trails served through the provider architecture.
+- Spill progression, wind/current simulation, timeline generation, and the end-to-end demo scenario remain for later sub-phases.
+- Vessel LOD/3D (Phase 5), investigation (Phase 6), timeline/search (Phase 7), and FastAPI integration (Phase 8) remain NOT STARTED.
 
 
 

@@ -1,6 +1,6 @@
 import { MOCK_CANDIDATES, MOCK_INCIDENTS, MOCK_TIMELINES } from '../data/mock/incidents';
 import { getMockEnvironmentPoint } from '../data/mock/environment';
-import { MOCK_VESSEL_TRAILS, MOCK_VESSELS } from '../data/mock/vessels';
+import { simulationEngine } from '../simulation';
 import type { EnvironmentQuery, OceanConditions } from '../types/environment';
 import type {
   IncidentQuery,
@@ -17,26 +17,24 @@ import type { OceanWatchDataProvider } from './provider';
  *
  * This is a permanent development and demo capability (see AGENTS.md §4),
  * not temporary throwaway code. It returns typed domain models with no
- * network activity. A real simulation engine can replace the underlying
- * mock datasets later without changing this provider's contract.
+ * network activity. Vessels and trails come from the centralized
+ * `SimulationEngine`, which advances a single deterministic simulation clock;
+ * incidents, candidates, timelines and environment remain static scenario
+ * data.
  */
 export class MockDataProvider implements OceanWatchDataProvider {
-  private readonly vessels: Vessel[];
-  private readonly vesselTrails: Record<string, VesselTrail>;
   private readonly incidents: OilSpillIncident[];
   private readonly candidates: Record<string, SuspectVessel[]>;
   private readonly timelines: Record<string, TimelineEvent[]>;
 
   constructor() {
-    this.vessels = structuredClone(MOCK_VESSELS);
-    this.vesselTrails = structuredClone(MOCK_VESSEL_TRAILS);
     this.incidents = structuredClone(MOCK_INCIDENTS);
     this.candidates = structuredClone(MOCK_CANDIDATES);
     this.timelines = structuredClone(MOCK_TIMELINES);
   }
 
   async getVessels(params?: VesselQuery): Promise<Vessel[]> {
-    let result = this.vessels;
+    let result = simulationEngine.getVessels();
 
     if (params?.types && params.types.length > 0) {
       const types = new Set(params.types);
@@ -47,16 +45,15 @@ export class MockDataProvider implements OceanWatchDataProvider {
       result = result.slice(0, params.limit);
     }
 
-    return structuredClone(result);
+    return result;
   }
 
   async getVessel(id: string): Promise<Vessel | null> {
-    const vessel = this.vessels.find((v) => v.id === id);
-    return vessel ? structuredClone(vessel) : null;
+    return simulationEngine.getVessel(id);
   }
 
   async getVesselTrail(id: string, params?: TrailQuery): Promise<VesselTrail | null> {
-    const trail = this.vesselTrails[id];
+    const trail = simulationEngine.getVesselTrail(id);
     if (!trail) return null;
 
     let points = trail.points;
@@ -70,7 +67,7 @@ export class MockDataProvider implements OceanWatchDataProvider {
       points = points.slice(-(params.maxPoints as number));
     }
 
-    return { vesselId: trail.vesselId, points: structuredClone(points) };
+    return { vesselId: trail.vesselId, points };
   }
 
   async getIncidents(params?: IncidentQuery): Promise<OilSpillIncident[]> {
