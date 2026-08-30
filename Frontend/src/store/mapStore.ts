@@ -17,13 +17,12 @@ const DEFAULT_LAYER_VISIBILITY: LayerVisibility = {
 };
 
 /**
- * Default map viewport centered on a region of interest.
- * Coordinates can be adjusted based on actual operational area.
+ * Default map viewport centered on active mock scenario (Gulf of Kutch / Saurashtra).
  */
 const DEFAULT_VIEWPORT: MapViewport = {
-  longitude: 67.0,
-  latitude: 18.0,
-  zoom: 6,
+  longitude: 69.6,
+  latitude: 22.4,
+  zoom: 7.5,
   pitch: 0,
   bearing: 0,
 };

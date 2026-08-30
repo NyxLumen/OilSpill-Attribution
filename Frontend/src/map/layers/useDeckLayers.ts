@@ -1,31 +1,131 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import type { Layer } from '@deck.gl/core';
-import { useMapStore } from '@/store';
+import { useQuery } from '@tanstack/react-query';
+import { useMapStore, useIncidentStore, useUIStore } from '@/store';
+import { useDataProvider } from '@/app/providers';
+import type { VesselTrail } from '@/types/vessel';
+import { createVesselLayers } from './vesselLayer';
+import { createSpillLayers } from './spillLayer';
+import { createTrailLayers } from './trailLayer';
 
 /**
  * Hook to construct and manage the active deck.gl layers.
  *
- * Centralizes layer construction according to layer visibility settings
- * and data state. Memoizes layer arrays to prevent unnecessary recreation
- * during high-frequency map navigation or React state changes.
+ * Centralizes layer construction according to layer visibility settings,
+ * loaded dataset state, and selection state.
  *
- * See AGENTS.md §14: Keep layer construction stable and memoized.
+ * Layer Composition Order:
+ *   1. Oil Spills (Polygon body, boundary, origin marker)
+ *   2. Vessel Trails (Historical paths)
+ *   3. Vessels (2D Directional symbols + selection halo)
+ *
+ * This ensures vessel picking is always prioritized over background geometry.
  */
 export function useDeckLayers(): Layer[] {
-  const layerVisibility = useMapStore((state) => state.layerVisibility);
+  const dataProvider = useDataProvider();
 
-  // Memoize layer list based on visibility and underlying dataset references
+  // Stores
+  const layerVisibility = useMapStore((state) => state.layerVisibility);
+  const selectedVesselId = useIncidentStore((state) => state.selectedVesselId);
+  const selectedIncidentId = useIncidentStore((state) => state.selectedIncidentId);
+  const selectVessel = useIncidentStore((state) => state.selectVessel);
+  const selectIncident = useIncidentStore((state) => state.selectIncident);
+  const setActivePanel = useUIStore((state) => state.setActivePanel);
+
+  // Queries
+  const { data: vessels = [] } = useQuery({
+    queryKey: ['vessels'],
+    queryFn: () => dataProvider.getVessels(),
+    staleTime: 60 * 1000,
+  });
+
+  const { data: incidents = [] } = useQuery({
+    queryKey: ['incidents'],
+    queryFn: () => dataProvider.getIncidents(),
+    staleTime: 60 * 1000,
+  });
+
+  const vesselIds = useMemo(() => vessels.map((v) => v.id), [vessels]);
+
+  const { data: trails = [] } = useQuery({
+    queryKey: ['vessel-trails', vesselIds],
+    queryFn: async () => {
+      if (vesselIds.length === 0) return [];
+      const results = await Promise.all(
+        vesselIds.map((id) => dataProvider.getVesselTrail(id))
+      );
+      return results.filter((t): t is VesselTrail => t !== null);
+    },
+    enabled: vesselIds.length > 0,
+    staleTime: 60 * 1000,
+  });
+
+  // Interaction Handlers
+  const handleSelectVessel = useCallback(
+    (vesselId: string) => {
+      selectVessel(vesselId);
+      setActivePanel('vessels');
+    },
+    [selectVessel, setActivePanel]
+  );
+
+  const handleSelectIncident = useCallback(
+    (incidentId: string) => {
+      selectIncident(incidentId);
+      setActivePanel('incidents');
+    },
+    [selectIncident, setActivePanel]
+  );
+
+  // Compose memoized deck.gl layers
   const layers = useMemo<Layer[]>(() => {
     const activeLayers: Layer[] = [];
 
-    // Layer construction for Phase 3+ milestones (vessels, spills, trails, etc.)
-    // will check layerVisibility flags and register layers accordingly.
-    if (!layerVisibility) {
-      return activeLayers;
+    // 1. Oil Spills Layer
+    if (layerVisibility.oilSpills && incidents.length > 0) {
+      activeLayers.push(
+        ...createSpillLayers({
+          incidents,
+          selectedIncidentId,
+          onSelectIncident: handleSelectIncident,
+        })
+      );
+    }
+
+    // 2. Vessel Trails Layer
+    if (layerVisibility.vesselTrails && trails.length > 0) {
+      activeLayers.push(
+        ...createTrailLayers({
+          trails,
+          selectedVesselId,
+        })
+      );
+    }
+
+    // 3. 2D Vessels Layer (Rendered above spills for reliable picking)
+    if (layerVisibility.vessels && vessels.length > 0) {
+      activeLayers.push(
+        ...createVesselLayers({
+          vessels,
+          selectedVesselId,
+          onSelectVessel: handleSelectVessel,
+        })
+      );
     }
 
     return activeLayers;
-  }, [layerVisibility]);
+  }, [
+    layerVisibility.oilSpills,
+    layerVisibility.vesselTrails,
+    layerVisibility.vessels,
+    incidents,
+    selectedIncidentId,
+    handleSelectIncident,
+    trails,
+    selectedVesselId,
+    vessels,
+    handleSelectVessel,
+  ]);
 
   return layers;
 }

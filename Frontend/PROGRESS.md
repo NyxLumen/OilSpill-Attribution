@@ -185,28 +185,28 @@ Already installed in the project:
 - [x] Central layer construction system (`useDeckLayers` hook)
 - [x] Layer visibility integration structure (`useMapStore.layerVisibility`)
 - [ ] Vessel clustering
-- [ ] Vessel 2D layer
-- [ ] Heading indicators
-- [ ] Vessel picking
-- [ ] Spill polygon
-- [ ] Spill boundary
-- [ ] Spill origin
-- [ ] Vessel trails
+- [x] Vessel 2D layer
+- [x] Heading indicators
+- [x] Vessel picking
+- [x] Spill polygon
+- [x] Spill boundary
+- [x] Spill origin
+- [x] Vessel trails
 - [ ] Investigation path
 - [ ] Shipping lanes
 - [ ] EEZ
 - [ ] Wind placeholder
 - [ ] Current placeholder
-- [ ] Hover state
-- [ ] Click/selection state
-- [ ] Map ↔ panel synchronization
+- [x] Hover state
+- [x] Click/selection state
+- [x] Map ↔ panel synchronization
 
 ### Acceptance
 
-- [ ] Each layer toggles independently
-- [ ] Map entities can be selected
-- [ ] Layer state persists correctly
-- [ ] No DOM marker per vessel
+- [x] Each layer toggles independently
+- [x] Map entities can be selected
+- [x] Layer state persists correctly
+- [x] No DOM marker per vessel
 
 ---
 
@@ -581,7 +581,27 @@ Already installed in the project:
     - **Flat (2D)**: Pitch 0°, DEM mesh disabled (`map.setTerrain(null)`), Hillshade layer disabled (`visibility: none`). VERIFIED.
     - **Relief**: Pitch 0°, DEM mesh disabled, Hillshade layer active (`visibility: visible`). VERIFIED.
     - **3D**: Pitch 60°, DEM mesh enabled (`source: 'terrain-dem-3d'`, exaggeration 2.5), Hillshade layer active (`visibility: visible`). Visual ridges, valleys, and physical elevation deformation visibly observable in Chrome at Western Ghats (`75.7°E, 13.4°N`). VERIFIED.
-    - **Default Viewport**: Preserved at `67.0°E, 18.0°N` (Arabian Sea).
-    - 0 TypeScript errors, 0 build errors, 0 runtime/console errors, 0 WebGL errors.
+- **Phase 3 Clean Deck.gl Visualization Implementation & Browser Verification**:
+  - **2D Directional Vessel Layer (`IconLayer`)**:
+    - Directional maritime vessel symbols pointing along true heading using `(360 - heading) % 360` (0° N, 90° E, 180° S, 270° W).
+    - Color-differentiated vessel types (`tanker`: amber `#f59e0b`, `cargo`: blue `#3b82f6`, `container`: cyan `#06b6d4`, `fishing`: emerald `#10b981`, `patrol`: purple `#8b5cf6`, `other`: slate `#64748b`).
+    - Screen-space minimum/maximum sizing (`sizeMinPixels: 18, sizeMaxPixels: 44`) preventing subpixel disappearance.
+    - Active vessel selection halo highlight (`ScatterplotLayer`).
+  - **Geometrically Accurate Oil Spill Layer (`PolygonLayer` + `ScatterplotLayer`)**:
+    - Mathematically scaled radius derived strictly from $r = \sqrt{A/\pi}$, converted with latitude/longitude corrections ($111.32$ km/deg, $\cos(\text{lat})$).
+    - Translucent petroleum slick fill with subtle organic contouring, high-contrast severity border, and detection origin marker.
+  - **Historical Vessel Trails (`PathLayer`)**:
+    - Visible at operational zoom with `widthMinPixels: 2`, highlighted golden track for selected vessel, visually subordinate to vessels.
+  - **Layer Order & Picking Precedence**:
+    - Composed as: Spill Geometry $\to$ Trails $\to$ Vessels $\to$ Selected Highlight, guaranteeing vessel clicks inside/overlapping spills remain immediately selectable.
+  - **Lightweight Tooltips & Interaction**:
+    - Evaluated directly on canvas overlay without React state re-renders (vessel telemetry: name, IMO, type, speed, heading, status; spill telemetry: ID, area, severity, confidence).
+  - **Map ↔ DetailPanel Synchronization**:
+    - Clicking a vessel on map or candidate list updates centralized `useIncidentStore.selectedVesselId` and renders deep telemetry metrics in `DetailPanel`.
+  - **Layer Visibility Controls**:
+    - Independent toggles for `vessels`, `vesselTrails`, and `oilSpills` in `useMapStore.layerVisibility`.
+  - **Browser Verification**:
+    - Automated CDP tests on live Chromium: 0 TypeScript errors, 0 build errors, 0 runtime exceptions, 0 WebGL errors.
+
 
 

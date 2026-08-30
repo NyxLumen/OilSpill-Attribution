@@ -61,7 +61,13 @@ export function Sidebar() {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setActivePanel(item.id as any)}
+                  onClick={() => {
+                    if (item.id === 'incidents' || item.id === 'vessels' || item.id === 'settings') {
+                      setActivePanel(item.id);
+                    } else if (item.id === 'map') {
+                      setActivePanel(null);
+                    }
+                  }}
                   className={cn(
                     'w-full flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium transition-smooth',
                     'text-ocean-700 hover:text-ocean-900 hover:bg-ocean-50',

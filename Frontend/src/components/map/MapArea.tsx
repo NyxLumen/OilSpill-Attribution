@@ -109,8 +109,8 @@ function MapControls({ mapRef }: { mapRef: React.RefObject<MapRef | null> }) {
     resetViewport();
     if (mapRef.current) {
       mapRef.current.flyTo({
-        center: [67.0, 18.0],
-        zoom: 6,
+        center: [69.6, 22.4],
+        zoom: 7.5,
         pitch: terrainMode === '3d' ? 60 : 0,
         bearing: 0,
         duration: 1200,
@@ -227,7 +227,9 @@ function CrosshairOverlay() {
  */
 export function MapArea() {
   const mapRef = useRef<MapRef | null>(null);
-  const { viewport, setViewport, terrainMode } = useMapStore();
+  const viewport = useMapStore((state) => state.viewport);
+  const setViewport = useMapStore((state) => state.setViewport);
+  const terrainMode = useMapStore((state) => state.terrainMode);
   const deckLayers = useDeckLayers();
 
   const handleMove = useCallback((evt: ViewStateChangeEvent) => {
@@ -310,7 +312,7 @@ export function MapArea() {
       <MapControls mapRef={mapRef} />
 
       {/* Scale Indicator */}
-      <div className="absolute bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-transparent backdrop-blur-md border border-border-subtle text-xs text-ocean-600 z-10 shadow-floating">
+      <div className="absolute bottom-6 left-6 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-transparent backdrop-blur-md border border-border-subtle text-xs text-ocean-600 z-10 shadow-floating">
         <div className="w-16 h-0.5 bg-ocean-500 rounded-full" />
         <span className="font-mono text-ocean-800">~10 km</span>
       </div>
