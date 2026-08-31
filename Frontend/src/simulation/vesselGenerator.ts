@@ -16,15 +16,26 @@ import {
 import type { AisJitter, SimVessel, TrafficPattern } from './types';
 
 /**
- * Deterministic 30-vessel fleet.
+ * Deterministic 36-vessel fleet.
  *
- * The fleet is small and deliberate (quality over density): 5 hand-authored
- * scenario vessels (vsl-001..vsl-005, preserved exactly for the INC-2026-001
- * narrative) plus 25 generated vessels that follow real maritime behaviour:
+ * The fleet is deliberately sized to the GFW calibration snapshot: 5 hand-
+ * authored scenario vessels (vsl-001..vsl-005, preserved exactly for the
+ * INC-2026-001 narrative) plus 31 generated vessels. The 25 baseline vessels
+ * keep the original design; 6 more close the gaps the real AIS data exposes
+ * (see data/processed/realism-analysis.md):
+ *
+ *   - 2 Sikka-bound merchant calls (vsl-031/032) — Sikka is the most-visited
+ *     Gulf port in the window (229 calls ≫ Kandla 15 / Mundra 19).
+ *   - 2 more fishing vessels on the dominant grounds (vsl-033/034) — the real
+ *     window assigned 14 events to gulfMouth and 11 to offMandvi.
+ *   - 2 roadstead drifters at Sikka and Mundra (vsl-035/036) — real anchorages
+ *     hold far more laid-up tonnage than the baseline 3.
+ *
+ * Generated behaviour follows real maritime practice:
  *
  *   - commercial corridor (deep lane / Gulf of Kutch, slow approach near port)
  *   - coastal / offshore feeders
- *   - fishing (port → transit → ground → loiter → transit → port)
+ *   - fishing (port → transit → ground → meander → transit → port)
  *   - patrol (localized closed circuits)
  *   - anchored (stationary holds at anchorages)
  *
@@ -37,16 +48,18 @@ import type { AisJitter, SimVessel, TrafficPattern } from './types';
  * Departure schedules are anchored to a fixed scenario day
  * (2026-08-27T00:00Z) and chosen so that no new vessel is near the
  * INC-2026-001 release region during the release window (06:12–07:27Z): all
- * Gulf-adjacent merchant traffic is still in its origin-hold leg then, and
- * the only vessels under way (deep-lane) stay >200 km away. The attribution
- * ranking therefore still emerges from the scoring model.
+ * Gulf-adjacent merchant traffic is still in its origin-hold leg then (the
+ * nearest pass belongs to the Sikka-bound cargo vsl-032 at ~21 km — far below
+ * the top candidate), and the only vessels under way (deep-lane) stay
+ * >200 km away. The attribution ranking therefore still emerges from the
+ * scoring model.
  */
 
 /** Fixed seed for the whole deterministic demo world. */
 export const SIMULATION_SEED = 20_260_827;
 
 /** Total fleet size (scenario core + generated traffic). */
-export const VESSEL_COUNT = 30;
+export const VESSEL_COUNT = 36;
 
 const MS_PER_MIN = 60_000;
 const MS_PER_HOUR = 3_600_000;
@@ -130,6 +143,17 @@ const GENERATED_SPECS: NewVesselSpec[] = [
   { id: 'vsl-028', type: 'other', routeKind: 'anchored', args: ['kandla'], speedRange: [0.6, 1.2], departWindowMin: [0, 0], originLabel: 'Anchored: Kandla roadstead', destinationLabel: 'Anchored: Kandla roadstead' },
   { id: 'vsl-029', type: 'other', routeKind: 'anchored', args: ['porbandar'], speedRange: [0.6, 1.2], departWindowMin: [0, 0], originLabel: 'Anchored: Porbandar roadstead', destinationLabel: 'Anchored: Porbandar roadstead' },
   { id: 'vsl-030', type: 'other', routeKind: 'anchored', args: ['mumbai'], speedRange: [0.6, 1.2], departWindowMin: [0, 0], originLabel: 'Anchored: Mumbai roadstead', destinationLabel: 'Anchored: Mumbai roadstead' },
+  // --- calibration add-ons (see realism-analysis.md) ---
+  // Sikka is the most-visited Gulf port in the GFW window (229 calls).
+  { id: 'vsl-031', type: 'cargo', routeKind: 'gulf', args: ['karachi', 'sikka'], speedRange: [11, 15], departWindowMin: [390, 540], dwellHours: [3, 6], originLabel: 'Karachi', destinationLabel: 'Sikka' },
+  { id: 'vsl-032', type: 'cargo', routeKind: 'gulf', args: ['sikka', 'mumbai'], speedRange: [11, 15], departWindowMin: [390, 540], dwellHours: [3, 6], originLabel: 'Sikka', destinationLabel: 'Mumbai' },
+  // Fishing on the two dominant real grounds (gulfMouth 14 / offMandvi 11 events).
+  { id: 'vsl-033', type: 'fishing', routeKind: 'fishing', args: ['mandvi', 'gulfMouth'], speedRange: [4, 7], departWindowMin: [450, 600], originLabel: 'Mandvi', destinationLabel: 'Ground: gulf mouth' },
+  { id: 'vsl-034', type: 'fishing', routeKind: 'fishing', args: ['mandvi', 'offMandvi'], speedRange: [4, 7], departWindowMin: [450, 600], originLabel: 'Mandvi', destinationLabel: 'Ground: off Mandvi' },
+  // Roadstead drifters for the busy Gulf terminals (real anchorages hold far
+  // more laid-up tonnage than the baseline 3).
+  { id: 'vsl-035', type: 'other', routeKind: 'anchored', args: ['sikka'], speedRange: [0.6, 1.2], departWindowMin: [0, 0], originLabel: 'Anchored: Sikka roadstead', destinationLabel: 'Anchored: Sikka roadstead' },
+  { id: 'vsl-036', type: 'other', routeKind: 'anchored', args: ['mundra'], speedRange: [0.6, 1.2], departWindowMin: [0, 0], originLabel: 'Anchored: Mundra roadstead', destinationLabel: 'Anchored: Mundra roadstead' },
 ];
 
 /** All parameters a vessel needs, derived deterministically from the seed. */
@@ -207,7 +231,7 @@ function buildSpecRoute(spec: NewVesselSpec): SimRoute {
     case 'hop':
       return gulfHopRoute(a, b);
     case 'fishing':
-      return fishingRoute(a, b).route;
+      return fishingRoute(a, b, spec.id).route;
     case 'patrol':
       return patrolCircuit(a);
     case 'anchored':
@@ -319,7 +343,7 @@ function buildGeneratedVessel(spec: NewVesselSpec, index: number, usedNames: Set
   let route = buildSpecRoute(spec);
   let journey: Journey;
   if (spec.routeKind === 'fishing') {
-    const f = fishingRoute(spec.args[0], spec.args[1]);
+    const f = fishingRoute(spec.args[0], spec.args[1], spec.id);
     route = f.route;
     journey = fishingJourney(route, params, f.outEndKm, f.loopEndKm);
   } else if (spec.routeKind === 'patrol') {

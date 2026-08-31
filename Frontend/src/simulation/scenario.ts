@@ -34,17 +34,22 @@ export const SCENARIO_VESSELS: ScenarioVesselSeed[] = [
     speed: 9.4,
     status: 'active',
     pattern: 'gulf-lane',
-    // Outbound down the Gulf of Kutch heading WSW, passing near the spill.
+    // Outbound down the deep-water Gulf of Kutch channel (kept fully in safe
+    // water), passing ~3 km from the INC-2026-001 release point around 07:00Z
+    // inside the release window, then out the gulf mouth. startIndex=4 puts
+    // the t=0 (09:10Z) position at the mouth, consistent with a predawn
+    // departure from the Sikka approaches.
     waypoints: [
-      { lat: 22.512, lng: 69.795 },
-      { lat: 22.483, lng: 69.681 },
-      { lat: 22.448, lng: 69.555 },
-      { lat: 22.418, lng: 69.39 },
-      { lat: 22.375, lng: 69.13 },
-      { lat: 22.32, lng: 68.82 },
-      { lat: 22.255, lng: 68.48 },
+      { lat: 22.56, lng: 69.9 },
+      { lat: 22.6, lng: 69.7 },
+      { lat: 22.54, lng: 69.58 },
+      { lat: 22.53, lng: 69.42 },
+      { lat: 22.51, lng: 69.22 },
+      { lat: 22.52, lng: 68.95 },
+      { lat: 22.4, lng: 68.85 },
+      { lat: 22.2, lng: 68.75 },
     ],
-    startIndex: 1,
+    startIndex: 4,
     pingPong: true,
   },
   {
@@ -55,14 +60,16 @@ export const SCENARIO_VESSELS: ScenarioVesselSeed[] = [
     speed: 12.1,
     status: 'active',
     pattern: 'gulf-lane',
-    // North-east bound through the outer gulf.
+    // North-east bound through the outer gulf / approach to the Kandla-Mundra
+    // complex. Re-routed from the Rann tidal flats to the validated mouth
+    // corridor (all waypoints + segments in safe water).
     waypoints: [
       { lat: 22.82, lng: 68.86 },
-      { lat: 23.012, lng: 69.057 },
-      { lat: 23.17, lng: 69.22 },
-      { lat: 23.34, lng: 69.44 },
-      { lat: 23.52, lng: 69.7 },
-      { lat: 23.68, lng: 70.0 },
+      { lat: 22.62, lng: 69.02 },
+      { lat: 22.58, lng: 69.22 },
+      { lat: 22.6, lng: 69.45 },
+      { lat: 22.65, lng: 69.8 },
+      { lat: 22.7, lng: 70.0 },
     ],
     startIndex: 1,
     pingPong: true,
@@ -75,14 +82,17 @@ export const SCENARIO_VESSELS: ScenarioVesselSeed[] = [
     speed: 10.4,
     status: 'active',
     pattern: 'south-lane',
-    // South-east region heading north-west along the southern lane.
+    // North-west bound along the Saurashtra west-coast lane (Veraval →
+    // Porbandar → Okha). The former south-east lane ran across the Saurashtra
+    // peninsula; the west-coast corridor is the navigable equivalent.
     waypoints: [
-      { lat: 20.72, lng: 71.45 },
-      { lat: 20.884, lng: 71.286 },
-      { lat: 21.05, lng: 71.15 },
-      { lat: 21.2, lng: 71.02 },
-      { lat: 21.36, lng: 70.88 },
-      { lat: 21.5, lng: 70.73 },
+      { lat: 20.91, lng: 70.27 },
+      { lat: 21.35, lng: 69.8 },
+      { lat: 21.63, lng: 69.52 },
+      { lat: 21.8, lng: 69.2 },
+      { lat: 22.05, lng: 69.05 },
+      { lat: 22.3, lng: 68.9 },
+      { lat: 22.47, lng: 68.96 },
     ],
     startIndex: 1,
     pingPong: true,
@@ -114,14 +124,15 @@ export const SCENARIO_VESSELS: ScenarioVesselSeed[] = [
     speed: 15.6,
     status: 'active',
     pattern: 'patrol',
-    // Localized patrol circuit near the incident area.
+    // Localized patrol circuit at the Gulf of Kutch mouth, in open safe water
+    // near the navigable channel. The former circuit (22.39, 69.93) sat on the
+    // Saurashtra shore.
     waypoints: [
-      { lat: 22.391, lng: 69.912 },
-      { lat: 22.383, lng: 69.92 },
-      { lat: 22.375, lng: 69.946 },
-      { lat: 22.39, lng: 69.97 },
-      { lat: 22.41, lng: 69.958 },
-      { lat: 22.406, lng: 69.928 },
+      { lat: 22.461, lng: 69.262 },
+      { lat: 22.439, lng: 69.262 },
+      { lat: 22.439, lng: 69.238 },
+      { lat: 22.461, lng: 69.238 },
+      { lat: 22.461, lng: 69.262 },
     ],
     startIndex: 0,
     pingPong: false,

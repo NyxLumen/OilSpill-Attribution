@@ -6,9 +6,10 @@ import { SCENARIO_START_MS, environmentAt } from '../../simulation';
  *
  * The live conditions returned by the data provider are now derived from the
  * deterministic simulation environment (`environmentAt`), which oscillates
- * slowly around this baseline — a gale out of the northwest is consistent with
- * the drift prediction in INC-2026-001's mock timeline (spill pushed
- * east-southeast). `MOCK_ENVIRONMENT` is kept as the scenario-start snapshot.
+ * slowly around this baseline — an E/ENE wind reinforcing the WSW ebb outflow
+ * is consistent with the drift prediction in INC-2026-001's mock timeline
+ * (spill carried west-southwest down the Gulf of Kutch channel).
+ * `MOCK_ENVIRONMENT` is kept as the scenario-start snapshot.
  */
 
 /** Baseline at scenario start (t=0), for reference and tests. */

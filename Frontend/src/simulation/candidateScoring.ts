@@ -239,7 +239,7 @@ function buildEvidence(f: ScoredCandidate): Evidence[] {
     },
     {
       type: 'environmental',
-      description: `NW gale + SE current drive the slick east-southeast from the release point; the vessel's closest track lies ${f.corridorDistKm.toFixed(1)} km from that drift corridor.`,
+      description: `E/ENE wind reinforcing the WSW ebb outflow drives the slick down the Gulf of Kutch toward the mouth; the vessel's closest track lies ${f.corridorDistKm.toFixed(1)} km from that drift corridor.`,
       score: round3(driftCoherence),
       supportingData: { corridorDistKm: round1(f.corridorDistKm) },
     },

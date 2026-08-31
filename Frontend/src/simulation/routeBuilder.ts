@@ -1,5 +1,6 @@
-import { buildRoute, destinationPoint, type RoutePoint, type SimRoute } from './geo';
+import { buildRoute, destinationPoint, distanceKm, type RoutePoint, type SimRoute } from './geo';
 import { checkNavigability } from './landMask';
+import { hashString, mulberry32 } from './rng';
 import {
   ANCHORAGES,
   CORRIDOR_DEEP_LANE,
@@ -209,29 +210,62 @@ export interface FishingRouteSpec {
   loopEndKm: number;
 }
 
-const FISHING_LOOP_RADIUS_KM = 1.4;
+/** Upper bound for loiter vertices around the ground centre (km). */
+const FISHING_LOOP_MAX_RADIUS_KM = 2.4;
+/** Deterministic radius shrink used when the meander clips the coast. */
+const FISHING_LOOP_SHRINKS = [1, 0.7, 0.5, 0.35];
 
-export function fishingRoute(homeId: string, groundKey: string): FishingRouteSpec {
+/**
+ * Irregular loiter meander around a fishing ground.
+ *
+ * A real trawl set works the same patch with a meandering, deliberately
+ * non-geometric pattern — never the fixed equilateral triangle every vessel
+ * used to share. Vertices are drawn per vessel from `seedKey` (the vessel id),
+ * so bearings and radii are irregular and differ across the fleet, while the
+ * whole fleet stays deterministic (same seed ⇒ same meander). The circuit
+ * returns to the ground centre so the existing journey legs (transit out →
+ * loiter → transit home) are unchanged.
+ */
+export function fishingRoute(homeId: string, groundKey: string, seedKey = `${homeId}:${groundKey}`): FishingRouteSpec {
   const home = PORTS[homeId];
   const ground = FISHING_GROUNDS[groundKey];
   if (!home || !ground) throw new Error(`fishingRoute: unknown ${homeId}/${groundKey}`);
 
-  // Small triangular loiter around the ground centre.
-  const loop: RoutePoint[] = [
-    destinationPoint(ground, 20, FISHING_LOOP_RADIUS_KM),
-    destinationPoint(ground, 140, FISHING_LOOP_RADIUS_KM),
-    destinationPoint(ground, 260, FISHING_LOOP_RADIUS_KM),
-  ];
-
-  const waypoints = chainPoints([home.approach], [ground], loop, [ground], [home.approach]);
-  const result = checkNavigability(waypoints);
-  if (!result.ok) {
-    throw new Error(`Fishing route ${homeId}→${groundKey} not navigable (${result.badWaypoint ?? result.badSegment})`);
+  // Per-vessel RNG — independent of the fleet draw order, so varying the
+  // meander never perturbs any other vessel's deterministic parameters.
+  const rng = mulberry32(hashString(seedKey));
+  const vertexCount = 4 + Math.floor(rng() * 3); // 4..6 turning points
+  const raw: { bearing: number; radiusKm: number }[] = [];
+  let bearing = rng() * 360;
+  for (let i = 0; i < vertexCount; i++) {
+    bearing = (bearing + 60 + rng() * 100) % 360; // irregular turning, no equal spacing
+    raw.push({ bearing, radiusKm: 0.5 + rng() * (FISHING_LOOP_MAX_RADIUS_KM - 0.5) });
   }
-  const route = buildRoute(waypoints);
-  const outEndKm = route.cumKm[1]; // arrival at ground (first waypoint pair)
-  const loopEndKm = route.cumKm[4]; // end of loiter circuit, back at ground
-  return { route, outEndKm, loopEndKm };
+
+  let lastError: string | undefined;
+  for (const shrink of FISHING_LOOP_SHRINKS) {
+    const loop = raw.map((v) => destinationPoint(ground, v.bearing, v.radiusKm * shrink));
+    const waypoints = chainPoints([home.approach], [ground], loop, [ground], [home.approach]);
+    const result = checkNavigability(waypoints);
+    if (result.ok) {
+      const route = buildRoute(waypoints);
+      // Locate the ground centre in the (possibly deduplicated) waypoint list.
+      let outIdx = -1;
+      let retIdx = -1;
+      for (let i = 0; i < waypoints.length; i++) {
+        if (distanceKm(waypoints[i], ground) < 0.02) {
+          if (outIdx === -1) outIdx = i;
+          retIdx = i;
+        }
+      }
+      if (outIdx === -1 || retIdx === -1) {
+        throw new Error(`Fishing route ${homeId}→${groundKey} ground centre lost from waypoints`);
+      }
+      return { route, outEndKm: route.cumKm[outIdx], loopEndKm: route.cumKm[retIdx] };
+    }
+    lastError = `(${result.badWaypoint ?? result.badSegment})`;
+  }
+  throw new Error(`Fishing route ${homeId}→${groundKey} not navigable at any meander scale ${lastError}`);
 }
 
 // ---------------------------------------------------------------------------

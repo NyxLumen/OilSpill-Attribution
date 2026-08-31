@@ -6,8 +6,8 @@
 
 ## Current Status
 
-**Current phase: Phase 4 — Mock Operational Data (4.1–4.8 complete; timeline generation deferred to Phase 7). Phase 4.8 = historical AIS snapshot acquisition + preprocessing + realism validation only — NOT integrated into the live app (synthetic fleet and INC-2026-001 scenario unchanged).**  
-**Overall: Deck.gl layer visualization foundation complete and browser verified. Mock mode is now fully scenario-driven: a deterministic 30-vessel maritime traffic simulation built on real geography (land mask, ports, anchorages, shipping corridors, fishing grounds, patrol zones — no vessel on land, no trail through land, all routes validated), plus a deterministic oil-spill attribution scenario (incident INC-2026-001, organic drifted spill geometry, phase state machine, fleet-derived candidate scoring, evidence, deterministic environment, drift coherence), all served through the unchanged `OceanWatchDataProvider` contract. A real 8-day AIS-derived snapshot (GFW Events API) has been acquired, processed, and validated, confirming the synthetic ports/traffic lanes/fishing grounds against real vessel activity (details in Phase 4.8 below).**
+**Current phase: Phase 4 — Mock Operational Data (4.1–4.9 complete; timeline generation deferred to Phase 7). Phase 4.8 = historical AIS snapshot acquisition + preprocessing + realism validation only — NOT integrated into the live app. Phase 4.9 = synthetic traffic calibrated against that snapshot and corrected for geography/behaviour (fleet 30→36, scenario core preserved).**  
+**Overall: Deck.gl layer visualization foundation complete and browser verified. Mock mode is now fully scenario-driven: a deterministic 36-vessel maritime traffic simulation built on real geography (land mask, ports, anchorages, shipping corridors, fishing grounds, patrol zones — no vessel on land, no trail through land, all routes validated), calibrated against a real 8-day AIS snapshot, plus a deterministic oil-spill attribution scenario (incident INC-2026-001, organic drifted spill geometry, phase state machine, fleet-derived candidate scoring, evidence, deterministic environment, drift coherence), all served through the unchanged `OceanWatchDataProvider` contract. The synthetic ports/traffic lanes/fishing grounds were validated against real vessel activity (details in Phase 4.8 below) and the fleet was then calibrated to match it (details in Phase 4.9 below).**
 
 The previous tracker was inconsistent: it called the UI redesign Phase 1.2 while also listing MapLibre/deck.gl installation as unfinished, even though those packages are already installed. This file is now the implementation source of truth.
 
@@ -16,7 +16,7 @@ Phase 0   Architecture & Contracts       MOSTLY COMPLETE
 Phase 1   UI + Visual Direction            COMPLETE
 Phase 2   Map Foundation                  COMPLETE
 Phase 3   Deck.gl Visualization             COMPLETE
-Phase 4   Mock Operational Data             IN PROGRESS (4.1–4.7 traffic + attribution scenario complete; 4.8 historical AIS snapshot acquired/validated, not integrated; timeline generation deferred to Phase 7)
+Phase 4   Mock Operational Data             IN PROGRESS (4.1–4.9 traffic + attribution scenario complete; 4.8 historical AIS snapshot acquired/validated, not integrated; 4.9 fleet calibrated/corrected; timeline generation deferred to Phase 7)
 Phase 5   Vessel LOD / 3D                  NOT STARTED
 Phase 6   Incident Investigation           NOT STARTED
 Phase 7   Timeline / Playback               NOT STARTED
@@ -340,6 +340,35 @@ Data acquisition + evaluation **only** — no frontend integration, synthetic fl
 **Recommendation (see realism analysis §7):** keep the synthetic fleet as the live demo driver; use this snapshot to calibrate identities/ports/dwell/lanes. Events are not continuous tracks, so they do not replace the synthetic underway trails the attribution scenario animates.
 
 **Verification:** `tsc -b` and `oxlint` and production build all pass; preprocessing determinism verified; secret scan (token absent from all outputs/diff) clean.
+
+### Phase 4.9 — Calibrate & Correct the Deterministic Traffic Simulation (2026-08-31)
+
+Turns the Phase 4.8 calibration data into concrete corrections to the synthetic simulation — without replacing the synthetic fleet, adding a runtime GFW dependency, or touching the attribution narrative. Everything remains deterministic, offline, and served through the unchanged provider contract.
+
+**Root causes fixed (geography):**
+- **Gulf-of-Kutch channel is centre-north** (~22.5–22.7°N). The coarse land mask flags 22.4°N as intertidal flats, so any route hugging the south shore put vessels/trails/spill on land. The safe exit west is at ~22.5°N. Scenario vessels vsl-001 (tanker), vsl-002 (cargo), vsl-003 (container) and vsl-005 (patrol circuit) were re-routed through the verified channel — **no exemptions, the 5 scenario vessels obey the same land-mask checks as the fleet** (`scenario.ts`).
+- Real port-visit positions for Sikka (22.49,69.86) and Mundra (22.75,69.71) sit on tidal flats per the mask, so their **anchorages were placed offshore in safe water** (`maritimeNetwork.ts` ANCHORAGES sikka/mundra); the routebuilder still terminates at each port's safe-water `approach` point.
+- Spill progression re-calibrated: `BASE_WIND {7.2 kn, 92°}` (E/ENE) + `BASE_CURRENT {0.8 kn, 268°}` (W) → drift **3.92 km/h @ 264° (WSW)** down the Gulf of Kutch toward the mouth; the whole slick stays offshore 07:42→23:00Z (`environment.ts`, `candidateScoring.ts` evidence text, incident/environment mock descriptions, StatusBar now derives wind/current from `environmentAt` instead of stale hard-coded values).
+
+**Behaviour fixed:** fishing vessels no longer share an identical triangle loop. `fishingRoute` now builds an **irregular per-vessel meander** (seeded from the vessel id: 4–6 vertices, bearing advances `+60..160°`, radii 0.5–2.4 km, shrink-retry guarantees navigability) — irregular, non-circular, distinct across vessels (`routeBuilder.ts`). AIS jitter already validated (`aisJitter.ts` unchanged).
+
+**Fleet calibrated 30 → 36 against GFW (hybrid decision — see `data/processed/realism-analysis.md`):**
+- Sikka (real rank: 229 visits ≫ Mundra 19 ≈ Kandla 15 ≈ Porbandar 13) gets real merchant traffic: vsl-031 karachi→sikka, vsl-032 sikka→mumbai (cargo).
+- The observed fishing hotspot (gulf mouth / northern gulf, gulfMouth 14 + offMandvi 11 real events) gets two more vessels: vsl-033 mandvi→gulfMouth, vsl-034 mandvi→offMandvi (fishing).
+- Real anchorages hold far more laid-up tonnage than the baseline 3: vsl-035 anchored at Sikka, vsl-036 anchored at Mundra (other).
+- New vessels draw RNG **per vessel id** (`mulberry32(hashString(\`${seed}:${id}\`))`), so existing vessels are byte-identical — determinism preserved. Composition now: tanker 2, cargo 11, container 4, fishing 10, patrol 4, other 5. Patrol kept at 3 generated (gulf patrol circuits not independently evidenced — not over-interpreted).
+
+**Attribution:** vsl-001 (Ocean Guardian) remains the **natural** top candidate at **0.965** (was ≈0.935) via the unmodified scoring model — no hard-coded ranking; second place (vsl-032 cargo, 0.662) is clearly below (margin > 0.1).
+
+**Verification (authoritative gate `scripts/verify-fleet.mjs`, no exemptions):**
+- 36 vessels, unique ids, scenario core preserved.
+- **Every vessel** (incl. vsl-001..vsl-005): route navigable + position & AIS-observed position never on land across 6 sampled times; trails (points + consecutive segments) off land for **all** vessels.
+- Spill origin, boundary vertices, edges and interior off land every 30 min 07:42→23:00Z; incident point off land.
+- Fishing meanders irregular (max bearing-gap deviation ≥5° from a regular polygon; radius spread ≥0.15) and distinct across vessels.
+- Determinism: two generations byte-identical; `verify-determinism.mjs` (fleet/positions/routes/trails/env/spill/incident/candidates) passes.
+- Ranking: vsl-001 top ≈0.965 (±0.015), second place clearly below.
+- `tsc -b`, `oxlint`, production build clean.
+- **Browser/CDP (browser wins):** live map shows 36 vessels + 36 trails + spill; deck.gl layer data cross-checked against the land mask in the live browser — 0 vessels on land, 0 trail points/segments on land, spill origin/vertices/edges offshore; incident panel shows INC-2026-001 / 97% Match / Ocean Guardian; Vessels panel shows ACTIVE FLEET (36); StatusBar shows E wind / W current; zero console/WebGL errors.
 
 ---
 
@@ -735,12 +764,21 @@ Data acquisition + evaluation **only** — no frontend integration, synthetic fl
 - Verification: tsc + lint + production build pass; `verify-fleet.mjs` (30 vessels, navigability, on-land sweep, determinism, behaviour diversity, ranking, trails) and `verify-determinism.mjs` (identical fleet/positions/routes/journeys/trails/environment/spill/incident/candidates across two generations) both pass; browser/CDP confirmed 30 vessels + 30 trails rendered, zero rendered generated positions or trail points on land, click→select works, layer toggles work, deck picking verified, zero console/WebGL/network errors.
 - Runs fully offline and deterministically from the fixed seed — no external API, no token, no network dependency at runtime.
 
+### Phase 4.9 — Calibrate & Correct the Deterministic Traffic Simulation
+
+- **Geography fixed (no exemptions):** scenario vessels vsl-001/002/003/005 re-routed through the verified centre-north Gulf-of-Kutch channel; Sikka/Mundra anchorages placed offshore in safe water; spill re-calibrated to drift WSW (3.92 km/h @ 264°) down the gulf and stay offshore all day (`scenario.ts`, `maritimeNetwork.ts`, `environment.ts`).
+- **Behaviour fixed:** fishing routes are now irregular per-vessel meanders (seeded, 4–6 vertices, variable radii, shrink-retry for navigability) — no shared triangle loops (`routeBuilder.ts`); distinct across vessels and validated.
+- **Fleet calibrated 30 → 36** against the real GFW window: Sikka merchant traffic (vsl-031/032), doubled gulf-mouth fishing (vsl-033/034), laid-up anchorages at Sikka/Mundra (vsl-035/036). Per-vessel-id RNG keeps every existing vessel byte-identical; deterministic.
+- **Attribution:** vsl-001 (Ocean Guardian) top at 0.965 naturally via the scoring model; second place (0.662) clearly below; nothing hard-coded.
+- **StatusBar:** wind/current now derived from `environmentAt(SCENARIO_START_MS)` (E/ENE wind reinforcing WSW ebb) instead of stale hard-coded values.
+- **Verification:** `verify-fleet.mjs` ALL CHECKS PASSED — 36 vessels, all routes navigable, no vessel/position/AIS/trail/spill point on land across the sampled day, fishing meanders irregular + distinct, determinism, ranking; `verify-determinism.mjs` passes; tsc/lint/build clean; browser/CDP confirms 36 vessels + trails + spill all off land, INC-2026-001 / 97% / Ocean Guardian, ACTIVE FLEET (36), E wind / W current, zero console errors.
+
 ### Current truth
 
-- Deterministic maritime traffic simulation is implemented, deterministic, and browser verified: a quality-first 30-vessel fleet constrained to real geography (no vessel on land, no trail through land, all routes navigable and validated) with realistic per-vessel behaviour and AIS-like observations.
+- Deterministic maritime traffic simulation is implemented, deterministic, and browser verified: a quality-first 36-vessel fleet constrained to real geography (no vessel on land, no trail through land, all routes navigable and validated) with realistic per-vessel behaviour, AIS-like observations, and traffic density calibrated against a real 8-day GFW AIS snapshot.
 - The deterministic oil-spill attribution scenario (4.3–4.6) is implemented, deterministic, and browser verified: incident INC-2026-001, organic drifted spill geometry, phase state machine, fleet-derived candidate scoring, evidence, deterministic environment, and drift coherence.
-- Mock mode is live: 30 moving vessels with coherent historical trails, a drifting organic spill, and ranked candidate attribution, all served through the provider architecture.
-- Timeline generation and the end-to-end demo scenario (Trace Source UI, Timeline) remain for later sub-phases; both are explicitly out of scope for 4.7.
+- Mock mode is live: 36 moving vessels with coherent historical trails, a drifting organic spill, and ranked candidate attribution, all served through the provider architecture.
+- Timeline generation and the end-to-end demo scenario (Trace Source UI, Timeline) remain for later sub-phases; both are explicitly out of scope for 4.9.
 - Vessel LOD/3D (Phase 5), investigation (Phase 6), timeline/search (Phase 7), and FastAPI integration (Phase 8) remain NOT STARTED.
 
 

@@ -45,7 +45,7 @@ export const MOCK_TIMELINES: Record<string, TimelineEvent[]> = {
       incidentId: INCIDENT_ID,
       timestamp: '2026-08-27T08:20:00Z',
       type: 'environmental_update',
-      description: 'Gale ~7 m/s from NW; surface drift projected east-southeast.',
+      description: 'E/ENE wind reinforcing the WSW ebb outflow; surface drift projected west-southwest down the Gulf of Kutch channel.',
     },
     {
       id: 'evt-005',

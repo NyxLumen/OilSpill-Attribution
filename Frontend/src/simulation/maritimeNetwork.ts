@@ -30,11 +30,15 @@ export interface Port {
 export const PORTS: Record<string, Port> = {
   karachi: { id: 'karachi', name: 'Karachi', kind: 'major', lat: 24.81, lng: 67.04, approach: { lat: 24.7, lng: 66.95 } },
   kandla: { id: 'kandla', name: 'Kandla', kind: 'major', lat: 23.0, lng: 70.22, approach: { lat: 22.75, lng: 70.05 } },
-  mundra: { id: 'mundra', name: 'Mundra', kind: 'major', lat: 22.83, lng: 69.73, approach: { lat: 22.72, lng: 69.62 } },
   vadinar: { id: 'vadinar', name: 'Vadinar', kind: 'major', lat: 22.4, lng: 69.72, approach: { lat: 22.52, lng: 69.8 } },
-  sikka: { id: 'sikka', name: 'Sikka', kind: 'minor', lat: 22.43, lng: 69.84, approach: { lat: 22.56, lng: 69.9 } },
+  // On-shore reference nudged to the real GFW visit position (22.49, 69.86):
+  // Sikka is the most-visited Gulf-of-Kutch port in the calibration window
+  // (229 calls vs Kandla 15 / Mundra 19 / Porbandar 13).
+  sikka: { id: 'sikka', name: 'Sikka', kind: 'minor', lat: 22.49, lng: 69.86, approach: { lat: 22.56, lng: 69.9 } },
   okha: { id: 'okha', name: 'Okha', kind: 'minor', lat: 22.47, lng: 69.08, approach: { lat: 22.47, lng: 68.96 } },
   porbandar: { id: 'porbandar', name: 'Porbandar', kind: 'major', lat: 21.63, lng: 69.62, approach: { lat: 21.63, lng: 69.52 } },
+  // On-shore reference nudged to the real GFW visit position (22.75, 69.71).
+  mundra: { id: 'mundra', name: 'Mundra', kind: 'major', lat: 22.75, lng: 69.71, approach: { lat: 22.72, lng: 69.62 } },
   mandvi: { id: 'mandvi', name: 'Mandvi', kind: 'minor', lat: 22.82, lng: 69.35, approach: { lat: 22.72, lng: 69.36 } },
   veraval: { id: 'veraval', name: 'Veraval', kind: 'major', lat: 20.91, lng: 70.37, approach: { lat: 20.91, lng: 70.27 } },
   diu: { id: 'diu', name: 'Diu', kind: 'minor', lat: 20.71, lng: 70.98, approach: { lat: 20.66, lng: 70.9 } },
@@ -118,9 +122,13 @@ export const CORRIDOR_GULF_SOUTH_SHORE: RoutePoint[] = [
 export const FISHING_GROUNDS: Record<string, RoutePoint> = {
   offPorbandar: { lat: 21.5, lng: 69.4 },
   offVeraval: { lat: 20.75, lng: 70.35 },
-  offMandvi: { lat: 22.6, lng: 69.3 },
+  // offMandvi + gulfMouth are nudged northeast into the observed GFW fishing
+  // hotspot (gulf mouth / northern gulf ~22.5–22.75°N, 69.5–70.1°E): the real
+  // window assigned 14 fishing events to gulfMouth and 11 to offMandvi — by far
+  // the two dominant grounds. Both centres remain in safe water.
+  offMandvi: { lat: 22.68, lng: 69.35 },
   offOkha: { lat: 22.45, lng: 68.95 },
-  gulfMouth: { lat: 22.45, lng: 69.35 },
+  gulfMouth: { lat: 22.6, lng: 69.5 },
   offDiu: { lat: 20.6, lng: 70.9 },
   southOffshore: { lat: 20.9, lng: 69.6 },
 };
@@ -141,4 +149,11 @@ export const ANCHORAGES: Record<string, RoutePoint> = {
   kandla: { lat: 22.78, lng: 70.02 },
   porbandar: { lat: 21.6, lng: 69.5 },
   mumbai: { lat: 18.92, lng: 72.72 },
+  // Sikka and Mundra roadsteads, just offshore of the real GFW visit positions
+  // (22.49,69.86 / 22.75,69.71): the real anchorages sit on the tidal flats the
+  // coarse land mask flags as land, so the holds are anchored in the safe-water
+  // channel immediately off each terminal. Sikka is the busiest Gulf port in
+  // the calibration window and warrants its own laid-up population.
+  sikka: { lat: 22.55, lng: 69.88 },
+  mundra: { lat: 22.72, lng: 69.62 },
 };

@@ -5,8 +5,11 @@ import { mulberry32, randomRange } from './rng';
  * Deterministic environmental field for the demo scenario.
  *
  * Conditions are a seeded, slowly-varying function of simulated time around
- * the INC-2026-001 baseline (a NW gale and a SE-flowing current — consistent
- * with the drift prediction in the mock timeline). There is no external
+ * the INC-2026-001 baseline (an east-northeasterly wind reinforcing the
+ * west-southwest ebb outflow down the Gulf of Kutch — consistent with the
+ * drift prediction in the mock timeline). The net surface drift therefore
+ * follows the deep-water channel of the gulf toward the Arabian Sea and
+ * keeps the slick offshore for the whole progression. There is no external
  * weather API and nothing depends on wall-clock randomness, so the same
  * simulated timestamp always yields the same conditions. This also lets the
  * provider answer `getEnvironment({ timestamp })` for a future Timeline.
@@ -15,8 +18,8 @@ import { mulberry32, randomRange } from './rng';
 const ENVIRONMENT_SEED = 1_337_339_733;
 
 /** Baseline values anchored to the INC-2026-001 scenario. */
-const BASE_WIND = { speed: 7.2, direction: 315 };
-const BASE_CURRENT = { speed: 0.6, direction: 128 };
+const BASE_WIND = { speed: 7.2, direction: 92 };
+const BASE_CURRENT = { speed: 0.8, direction: 268 };
 
 const DEG = Math.PI / 180;
 const TWO_PI = Math.PI * 2;

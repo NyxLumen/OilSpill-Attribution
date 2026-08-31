@@ -1,13 +1,26 @@
 import { useMapStore } from '@/store';
+import { SCENARIO_START_MS, environmentAt } from '@/simulation';
 
 /**
  * OceanWatch Status Bar Component
  *
  * Floating telemetry strip with maritime data.
- * Light aesthetic for Phase 1.2.
+ * Wind/current are derived from the deterministic simulation environment at
+ * scenario start (INC-2026-001 baseline) so the strip never contradicts the
+ * drift narrative — an E/ENE wind reinforcing the WSW ebb outflow. The vessel/
+ * spill/alert counters are global Arabian-Sea telemetry, not the demo fleet.
  */
+const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+const MS_TO_KN = 1.94384;
+
+/** Compass point for a direction in degrees (wind: coming-from; current: flow). */
+function compass(dir: number): string {
+  return COMPASS[Math.round(dir / 22.5) % 16];
+}
+
 export function StatusBar() {
   const { viewport } = useMapStore();
+  const env = environmentAt(SCENARIO_START_MS);
 
   // Format coordinates for display
   const latStr = `${Math.abs(viewport.latitude).toFixed(2)}°${viewport.latitude >= 0 ? 'N' : 'S'}`;
@@ -66,7 +79,9 @@ export function StatusBar() {
         {/* Wind */}
         <div className="flex items-center gap-2">
           <span className="text-xs text-ocean-600 uppercase tracking-wider">Wind</span>
-          <span className="font-mono text-ocean-800">14.6 kn, NW</span>
+          <span className="font-mono text-ocean-800">
+            {(env.wind.speed * MS_TO_KN).toFixed(1)} kn, {compass(env.wind.direction)}
+          </span>
         </div>
 
         {/* Separator */}
@@ -75,7 +90,9 @@ export function StatusBar() {
         {/* Current */}
         <div className="flex items-center gap-2">
           <span className="text-xs text-ocean-600 uppercase tracking-wider">Current</span>
-          <span className="font-mono text-ocean-800">0.8 kn, SE</span>
+          <span className="font-mono text-ocean-800">
+            {(env.current.speed * MS_TO_KN).toFixed(1)} kn, {compass(env.current.direction)}
+          </span>
         </div>
       </div>
     </div>
