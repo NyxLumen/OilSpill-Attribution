@@ -81,6 +81,11 @@ export function buildRoute(waypoints: RoutePoint[]): SimRoute {
   return { waypoints, totalKm: total, cumKm };
 }
 
+/** Total length of a route in km. */
+export function routeLengthKm(route: SimRoute): number {
+  return route.totalKm;
+}
+
 export interface RouteState {
   lat: number;
   lng: number;

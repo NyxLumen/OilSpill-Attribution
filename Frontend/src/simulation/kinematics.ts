@@ -1,5 +1,7 @@
 import { pointAlongRoute } from './geo';
 import type { SimVessel } from './types';
+import { journeyProgressAt, journeySpeedKnAt, KNOT_TO_KM_S } from './journey';
+import type { Journey } from './journey';
 
 /**
  * Kinematics: pure, deterministic position/heading math shared by the
@@ -25,8 +27,8 @@ export const SCENARIO_START_MS = Date.parse(SCENARIO_START_ISO);
  */
 export const TIME_SCALE = 120;
 
-/** Knots → kilometres per second. */
-export const KNOT_TO_KM_S = 1.852 / 3600;
+/** Knots → kilometres per second. Re-exported from journey.ts (single source). */
+export { KNOT_TO_KM_S } from './journey';
 
 export interface VesselKinematicState {
   lat: number;
@@ -49,11 +51,18 @@ function effectiveSpeedKn(def: SimVessel): number {
 /**
  * Compute a vessel's kinematic state at an arbitrary simulated time.
  *
- * Movement advances the vessel along its route by `speed × elapsed`; ping-pong
- * lanes reflect at the ends instead of wrapping. The destination-point math in
+ * Vessels with a behavior `journey` (fishing transit/loiter, patrol circuits,
+ * cargo slowdown near destination) follow the journey timeline; everything
+ * else advances along its route by `speed × elapsed`, with ping-pong lanes
+ * reflecting at the ends instead of wrapping. The destination-point math in
  * `geo.ts` accounts for latitude when converting distance into lat/lng deltas.
  */
 export function vesselStateAt(def: SimVessel, simTimeMs: number): VesselKinematicState {
+  const journey = def.journey;
+  if (journey) {
+    return journeyStateAt(def, journey, simTimeMs);
+  }
+
   const elapsedS = (simTimeMs - SCENARIO_START_MS) / 1000;
   const effectiveSpeed = effectiveSpeedKn(def);
 
@@ -79,12 +88,41 @@ export function vesselStateAt(def: SimVessel, simTimeMs: number): VesselKinemati
   }
 
   const state = pointAlongRoute(def.route, progress);
-  const heading = direction === 1 ? state.heading : (state.heading + 180) % 360;
+  let heading = direction === 1 ? state.heading : (state.heading + 180) % 360;
+  if (effectiveSpeed <= 0 && def.idleHeadingDeg !== undefined) {
+    heading = def.idleHeadingDeg;
+  }
 
   return {
     lat: state.lat,
     lng: state.lng,
     heading: Math.round(heading),
     speed: Math.round(effectiveSpeed * 10) / 10,
+  };
+}
+
+/** Journey-driven state: progress from the timeline, heading follows travel direction. */
+function journeyStateAt(
+  def: SimVessel,
+  journey: Journey,
+  simTimeMs: number
+): VesselKinematicState {
+  const progress = journeyProgressAt(journey, simTimeMs);
+  const state = pointAlongRoute(def.route, progress);
+  const speedKn = journeySpeedKnAt(journey, simTimeMs);
+
+  // Sample one step ahead to detect whether the journey is running backwards
+  // (out-and-back return leg, fishing home leg) so the hull points the right way.
+  const next = journeyProgressAt(journey, simTimeMs + 2000);
+  let heading = next < progress ? (state.heading + 180) % 360 : state.heading;
+  if (speedKn <= 0.05 && def.idleHeadingDeg !== undefined) {
+    heading = def.idleHeadingDeg;
+  }
+
+  return {
+    lat: state.lat,
+    lng: state.lng,
+    heading: Math.round(heading),
+    speed: Math.round(speedKn * 10) / 10,
   };
 }

@@ -1,17 +1,22 @@
-import { vesselStateAt } from './kinematics';
+import { observedStateAt } from './aisJitter';
+import { hashString, mulberry32 } from './rng';
 import type { SimVessel, TrailGenOptions } from './types';
 import type { VesselTrail } from '@/types/vessel';
 
-/** Default historical window: 72 points × 20 sim-minutes = 24 sim-hours. */
+/** Default historical window: 72 points, each ~a few report intervals long. */
 const DEFAULT_POINT_COUNT = 72;
-const DEFAULT_INTERVAL_SECONDS = 1200;
 const MAX_POINT_COUNT = 120;
 
 /**
  * Generate a deterministic historical AIS trail for a vessel, sampled
- * backwards from the current position along the vessel's own route. The trail
- * is geographically coherent with where the vessel is and the direction it is
- * travelling, and is consumable directly by the existing deck.gl PathLayer.
+ * backwards from the current position along the vessel's own journey/route.
+ *
+ * The trail is geographically coherent with the vessel's actual behaviour
+ * (same simulated journey as the live vessel): the points use the same
+ * `observedStateAt` path as the live marker — including per-report AIS
+ * jitter — so the trail tip coincides with the current reported position.
+ * Sampling gaps are irregular (real AIS reports are not uniform), derived
+ * deterministically per vessel and per point — no Math.random.
  *
  * Stationary (anchored) vessels return an empty trail so no degenerate
  * zero-length path is drawn.
@@ -26,12 +31,12 @@ export function generateTrailPoints(
   }
 
   const count = Math.max(2, Math.min(options?.pointCount ?? DEFAULT_POINT_COUNT, MAX_POINT_COUNT));
-  const intervalSeconds = options?.intervalSeconds ?? DEFAULT_INTERVAL_SECONDS;
+  const baseIntervalS = options?.intervalSeconds ?? (def.aisReportPeriodS ?? 1200) * 4;
 
   const points: VesselTrail['points'] = [];
-  for (let i = count - 1; i >= 0; i--) {
-    const t = atMs - i * intervalSeconds * 1000;
-    const state = vesselStateAt(def, t);
+  let t = atMs;
+  for (let i = 0; i < count; i++) {
+    const state = observedStateAt(def, t);
     points.push({
       lat: state.lat,
       lng: state.lng,
@@ -39,6 +44,11 @@ export function generateTrailPoints(
       speed: state.speed,
       heading: state.heading,
     });
+    // Irregular per-point gap (oldest samples get progressively older).
+    const rng = mulberry32(hashString(`${def.id}:trail:${i}`));
+    t -= Math.round(baseIntervalS * (0.6 + 0.8 * rng())) * 1000;
   }
+  // Oldest → newest (newest = current reported position at index count-1).
+  points.reverse();
   return points;
 }

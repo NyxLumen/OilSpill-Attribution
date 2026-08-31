@@ -1,5 +1,6 @@
 import { generateSimVessels, SIMULATION_SEED, VESSEL_COUNT } from './vesselGenerator';
-import { SCENARIO_START_MS, TIME_SCALE, vesselStateAt } from './kinematics';
+import { SCENARIO_START_MS, TIME_SCALE } from './kinematics';
+import { observedStateAt } from './aisJitter';
 import { generateTrailPoints } from './trailGenerator';
 import type { SimVessel, TrailGenOptions } from './types';
 import type { Vessel, VesselTrail } from '@/types/vessel';
@@ -35,9 +36,9 @@ export class SimulationEngine {
     this.timeOriginMs = performance.now();
   }
 
-  /** Map a simulation vessel onto the domain `Vessel` model. */
+  /** Map a simulation vessel onto the domain `Vessel` model (reported AIS state). */
   private toDomain(def: SimVessel, atMs: number): Vessel {
-    const state = vesselStateAt(def, atMs);
+    const state = observedStateAt(def, atMs);
     return {
       id: def.id,
       imo: def.imo,
