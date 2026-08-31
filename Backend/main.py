@@ -15,7 +15,10 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-from inference import run_inference
+try:
+    from Backend.inference import run_inference
+except ModuleNotFoundError:
+    from inference import run_inference
 
 
 # ============================================================
@@ -832,6 +835,351 @@ async def attribute(
                 f"/results/"
                 f"{request_id}_attribution.csv"
             ),
+    }
+
+
+# ============================================================
+# END-TO-END IMAGE ATTRIBUTION
+# ============================================================
+
+@app.post("/attribute_image")
+async def attribute_image(
+    image_file: UploadFile = File(...),
+    metadata: str | None = Form(
+        default=None
+    ),
+):
+    """
+    Run full end-to-end pipeline from a single uploaded SAR image:
+
+        1. ML segmentation & ship detection
+        2. Backward Lagrangian drift simulation
+        3. AIS data loading & cleaning (using synthetic_ais.csv)
+        4. Vessel trajectory matching & composite scoring
+        5. Return top culprit candidate and artifacts
+
+    Input
+    -----
+    image_file:
+        SAR image (JPG, PNG, TIFF).
+
+    metadata:
+        Optional JSON string with acquisition or coordinate metadata.
+
+    Output
+    ------
+    JSON object containing ML summary, ranked candidate count,
+    top candidate attribution scores, and artifact URLs.
+    """
+
+    # --------------------------------------------------------
+    # File name / extension
+    # --------------------------------------------------------
+
+    original_filename = (
+        image_file.filename
+        or "uploaded_image"
+    )
+
+    filename = Path(
+        original_filename
+    ).name
+
+    extension = (
+        Path(filename)
+        .suffix
+        .lower()
+    )
+
+    allowed_extensions = {
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".tif",
+        ".tiff",
+    }
+
+    if extension not in allowed_extensions:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Unsupported image format. "
+                "Supported formats: "
+                "JPG, JPEG, PNG, TIF, TIFF."
+            ),
+        )
+
+    # --------------------------------------------------------
+    # Parse optional metadata
+    # --------------------------------------------------------
+
+    parsed_metadata: dict = {}
+
+    if metadata:
+        try:
+            parsed_metadata = json.loads(
+                metadata
+            )
+        except json.JSONDecodeError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "The 'metadata' field must "
+                    f"contain valid JSON: {exc}"
+                ),
+            )
+
+        if not isinstance(
+            parsed_metadata,
+            dict,
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "'metadata' must be a JSON object."
+                ),
+            )
+
+    # --------------------------------------------------------
+    # Read uploaded image bytes
+    # --------------------------------------------------------
+
+    try:
+        image_bytes = await image_file.read()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Could not read uploaded file: {exc}"
+            ),
+        )
+
+    if not image_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file is empty.",
+        )
+
+    # --------------------------------------------------------
+    # Step 1: Run ML inference
+    # --------------------------------------------------------
+
+    try:
+        result = run_inference(
+            image_bytes=image_bytes,
+            filename=filename,
+            metadata=parsed_metadata,
+            output_format="csv",
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=str(exc),
+        )
+    except Exception as exc:
+        print(
+            "Inference error in attribute_image:",
+            repr(exc),
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Inference failed. "
+                "Check the backend terminal logs."
+            ),
+        )
+
+    request_id = result["request_id"]
+
+    # --------------------------------------------------------
+    # Step 2: Check if oil was detected
+    # --------------------------------------------------------
+
+    if not result["oil_detected"]:
+        return {
+            "status": "no_oil_detected",
+            "request_id": request_id,
+            "filename": result["filename"],
+            "oil_detected": False,
+            "oil_confidence": result["oil_confidence"],
+            "oil_latitude": result["oil_latitude"],
+            "oil_longitude": result["oil_longitude"],
+            "ship_count": result["ship_count"],
+            "candidate_count": 0,
+            "top_candidate": None,
+            "image_url": f"/results/{request_id}.png",
+            "csv_url": (
+                f"/results/{request_id}.csv"
+                if result["csv_path"]
+                else None
+            ),
+            "attribution_csv_url": None,
+        }
+
+    # --------------------------------------------------------
+    # Step 3: Locate synthetic AIS data and output path
+    # --------------------------------------------------------
+
+    ais_path = PROJECT_ROOT / "Drift" / "data" / "ais" / "synthetic_ais.csv"
+
+    if not ais_path.exists():
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Synthetic AIS data file not found at: {ais_path}"
+            ),
+        )
+
+    attribution_output = (
+        OUTPUT_DIR
+        / f"{request_id}_attribution.csv"
+    )
+
+    # --------------------------------------------------------
+    # Step 4: Run Drift + AIS attribution pipeline
+    # --------------------------------------------------------
+
+    try:
+        from run_ml_ais import (
+            run_ml_ais_pipeline
+        )
+
+        print("AIS PATH BEING USED:", ais_path)
+        print("AIS EXISTS:", ais_path.exists())
+
+        ranked = run_ml_ais_pipeline(
+            ml_result_path=result["csv_path"],
+            ais_path=str(ais_path),
+            output_path=str(attribution_output),
+            backtrack_hours=12,
+            n_particles=500,
+            timestep_s=900,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        )
+    except Exception as exc:
+        print(
+            "Attribution error in attribute_image:",
+            repr(exc),
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "AIS attribution failed. "
+                "Check the backend terminal logs."
+            ),
+        )
+
+    # --------------------------------------------------------
+    # Step 5: Format response with JSON-safe native Python types
+    # --------------------------------------------------------
+
+    def clean_scalar(val):
+        if val is None:
+            return None
+        if hasattr(val, "item"):
+            try:
+                val = val.item()
+            except Exception:
+                pass
+        try:
+            if val != val:  # NaN check
+                return None
+        except Exception:
+            pass
+        return val
+
+    def to_float(val):
+        v = clean_scalar(val)
+        if v is None:
+            return None
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    def to_int(val):
+        v = clean_scalar(val)
+        if v is None:
+            return None
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            return None
+
+    def to_str(val):
+        v = clean_scalar(val)
+        if v is None:
+            return None
+        return str(v)
+
+    top_candidate = None
+
+    if not ranked.empty:
+        best = ranked.iloc[0]
+        top_candidate = {
+            "rank": 1,
+            "mmsi": to_int(best.get("mmsi")),
+            "vessel_type": to_str(best.get("vessel_type")),
+            "composite_score": to_float(
+                best.get("composite_score")
+            ),
+            "spatial_score": to_float(
+                best.get("spatial_score")
+            ),
+            "temporal_score": to_float(
+                best.get("temporal_score")
+            ),
+            "course_score": to_float(
+                best.get("course_score")
+            ),
+            "mean_distance_km": to_float(
+                best.get("mean_distance_km")
+            ),
+            "min_distance_km": to_float(
+                best.get("min_distance_km")
+            ),
+        }
+
+    return {
+        "status": (
+            "success"
+            if not ranked.empty
+            else "no_candidates"
+        ),
+        "request_id": to_str(request_id),
+        "filename": to_str(result.get("filename")),
+        "oil_detected": bool(result.get("oil_detected")),
+        "oil_confidence": to_float(result.get("oil_confidence")),
+        "oil_latitude": to_float(result.get("oil_latitude")),
+        "oil_longitude": to_float(result.get("oil_longitude")),
+        "ship_count": to_int(result.get("ship_count")),
+        "candidate_count": int(len(ranked)),
+        "top_candidate": top_candidate,
+        "image_url": f"/results/{request_id}.png",
+        "csv_url": (
+            f"/results/{request_id}.csv"
+            if result.get("csv_path")
+            else None
+        ),
+        "attribution_csv_url": (
+            f"/results/{request_id}_attribution.csv"
+            if attribution_output.exists()
+            else None
+        ),
     }
 
 
