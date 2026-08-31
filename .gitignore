@@ -1,0 +1,16 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment / secrets
+.env
+.env.*
+
+# Generated backend outputs
+Backend/outputs/
+
+# Temporary files
+*.tmp
+*.log

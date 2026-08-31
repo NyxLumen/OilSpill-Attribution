@@ -1049,9 +1049,6 @@ async def attribute_image(
             run_ml_ais_pipeline
         )
 
-        print("AIS PATH BEING USED:", ais_path)
-        print("AIS EXISTS:", ais_path.exists())
-
         ranked = run_ml_ais_pipeline(
             ml_result_path=result["csv_path"],
             ais_path=str(ais_path),
