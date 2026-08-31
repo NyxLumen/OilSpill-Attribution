@@ -6,8 +6,8 @@
 
 ## Current Status
 
-**Current phase: Phase 4 — Mock Operational Data (4.1 + 4.2 Deterministic Maritime Traffic Simulation complete)**  
-**Overall: Deck.gl layer visualization foundation complete and browser verified. A deterministic 80-vessel maritime traffic simulation now powers mock mode — seeded fleet, fixed scenario epoch, live movement, and coherent historical trails, all consumed through `MockDataProvider`.**
+**Current phase: Phase 4 — Mock Operational Data (4.1–4.6 Deterministic Maritime Traffic + Oil-Spill Attribution Scenario complete)**  
+**Overall: Deck.gl layer visualization foundation complete and browser verified. Mock mode is now fully scenario-driven: a deterministic 80-vessel maritime traffic simulation plus a deterministic oil-spill attribution scenario (incident INC-2026-001, organic drifted spill geometry, phase state machine, fleet-derived candidate scoring, evidence, deterministic environment, drift coherence), all served through the unchanged `OceanWatchDataProvider` contract.**
 
 The previous tracker was inconsistent: it called the UI redesign Phase 1.2 while also listing MapLibre/deck.gl installation as unfinished, even though those packages are already installed. This file is now the implementation source of truth.
 
@@ -16,7 +16,7 @@ Phase 0   Architecture & Contracts       MOSTLY COMPLETE
 Phase 1   UI + Visual Direction            COMPLETE
 Phase 2   Map Foundation                  COMPLETE
 Phase 3   Deck.gl Visualization             COMPLETE
-Phase 4   Mock Operational Data             IN PROGRESS (4.1+4.2 traffic simulation complete)
+Phase 4   Mock Operational Data             IN PROGRESS (4.1–4.6 attribution scenario complete; timeline generation deferred to Phase 7)
 Phase 5   Vessel LOD / 3D                  NOT STARTED
 Phase 6   Incident Investigation           NOT STARTED
 Phase 7   Timeline / Playback               NOT STARTED
@@ -212,25 +212,25 @@ Already installed in the project:
 
 # Phase 4 — Mock Operational Data
 
-## Status: IN PROGRESS (4.1 + 4.2 deterministic traffic simulation COMPLETE)
+## Status: IN PROGRESS (4.1–4.6 deterministic traffic + oil-spill attribution scenario COMPLETE; timeline generation deferred to Phase 7)
 
 ### Data
 
 - [x] Realistic vessel dataset (deterministic 80-vessel fleet, 6 types, seeded)
 - [x] Multiple vessel types (tanker / cargo / container / fishing / patrol / other)
-- [x] Mock incidents (static scenario data, pre-existing)
-- [x] Spill geometry (static scenario data, pre-existing)
+- [x] Mock incidents (scenario-derived: deterministic INC-2026-001, phase-driven status/confidence/severity)
+- [x] Spill geometry (deterministic organic polygon: seeded harmonics, logistic area growth, clock-driven drift, cached per sim-minute)
 - [x] Historical trails (deterministic, per-vessel, 24h span, consumes `VesselTrail`/`PathLayer`)
-- [x] Candidate rankings (static scenario data, pre-existing)
-- [x] Evidence (static scenario data, pre-existing)
-- [x] Environment data (static scenario data, pre-existing)
+- [x] Candidate rankings (deterministic multi-factor scoring over the live fleet, not hard-coded)
+- [x] Evidence (built from per-candidate distance/temporal/route/behavioral/environmental factors)
+- [x] Environment data (deterministic simulated wind/current/drift via seeded harmonics)
 
 ### Simulation
 
 - [x] Vessel movement (deterministic route-based kinematics, centralized clock, no per-vessel timers)
-- [ ] Spill progression
-- [ ] Wind/current values (simulated)
-- [ ] Timeline generation
+- [x] Spill progression (deterministic function of sim time: NORMAL → SPILL DETECTED → INITIAL EXTENT → EXPANDS/DRIFTS → INVESTIGATION-READY; driven by the centralized clock)
+- [x] Wind/current values (deterministic simulated environment: seeded harmonics around Arabian Sea baselines, no external APIs)
+- [ ] Timeline generation (deferred to Phase 7 — out of scope for the 4.3–4.6 scenario)
 - [x] Deterministic scenario runner (fixed seed + fixed scenario epoch, reproducible on reload)
 
 ### Phase 4.1 + 4.2 — Deterministic Maritime Traffic Simulation (2026-08-31)
@@ -255,25 +255,44 @@ Already installed in the project:
 - [x] Node-side verification: fleet size/distribution, bit-identical determinism across two engine instances, movement rate matches kinematics, trail coherence
 - [x] Browser/CDP verification: 80 vessels × 6 types render, distinct headings/speeds, smooth movement, coherent trails, hover tooltip + click selection → DetailPanel sync, vessel & trail layer toggles, reload reproduces the initial scenario, zero console/WebGL errors, no render storm (~141 FPS, no long tasks)
 
+### Phase 4.3–4.6 — Deterministic Oil-Spill Attribution Scenario (2026-08-31)
+
+**New `src/simulation/` modules (5):**
+- `incident.ts` — primary incident `INC-2026-001`, fixed detection timestamp/location/area/confidence/severity/source; `ScenarioPhase` state machine (`normal → spill-detected → correlating → attribution-ready`) as a pure function of sim time.
+- `environment.ts` — deterministic `environmentAt(simTime)` (seeded harmonics over plausible Arabian Sea baselines) and `driftVectorAt(simTime)` (3% Ekman wind + full current → 3.2 km/h @ ~126°).
+- `spillGeometry.ts` — organic irregular polygon (44 vertices, 5 seeded shape harmonics, never a perfect circle), logistic area growth 6.2→26 km², centroid drift along the reference drift vector, back-tracked estimated release point; cached per simulated minute.
+- `candidateScoring.ts` — multi-factor correlation over the live fleet (distance to estimated release point, temporal release-window centrality, behavioral speed bell curve, route time-near fraction, vessel-type prior); top result vsl-001 Ocean Guardian (0.935 ≈ 94%), plus 3 plausible cargo alternatives; builds `Evidence` items per candidate.
+- `scenarioRunner.ts` — `scenarioStateAt(simTime)`: phase + incident + spill + environment + vessels + candidates in one deterministic snapshot; candidates cached.
+
+**Integration:**
+- `MockDataProvider` serves the scenario through the unchanged `OceanWatchDataProvider` contract (`getIncidents/getIncident/getCandidates/getEnvironment`, all honoring optional `timestamp`); no second clock, no competing provider, no direct `fetch`.
+- Spill visualization consumes the deterministic geometry (boundary/origin/drift) via `spillLayer.ts`; `DeckGLOverlay` tooltip shows severity/confidence/drift and the ESTIMATED RELEASE POINT marker; incident query polls on the same 300 ms interval as the fleet (geometry stays cached per sim-minute).
+- `DetailPanel` candidate card is data-driven from the ranked candidate (94% match, Ocean Guardian, IMO-9300283) with an "Inspect Vessel & Trail" selection into the vessel telemetry panel.
+
+**Verification:**
+- `npm run build` passes; `npm run lint` passes.
+- Node-side determinism suite: same timestamp ⇒ identical incident/geometry/environment/candidates; two fresh providers identical; two engine instances identical; geometry stable within a sim-minute and progressing across minutes; boundary closed & organic (radius std ≈ 4.8% of mean, ±19% spread); drift coherence (origin→centroid bearing equals drift bearing); candidates empty before correlation phase.
+- Browser/CDP (live Chromium): incident panel scenario-driven (INC-2026-001, 92% confidence, area/drift progressing); spill polygon + origin marker + drift render on the deck canvas (framebuffer pixel-verified); 80 vessels move (76 of 80 changed position in 1.5 s) with 76 trails × 72 points; Oil Spills layer toggle removes/restores both spill layers; candidate → Inspect Vessel & Trail → Ocean Guardian telemetry panel works; fresh reload reproduces the same initial scenario; zero console errors/warnings.
+
 ### Demo scenario
 
-- [ ] Normal traffic
-- [ ] Spill detection event
-- [ ] Spill appears
-- [ ] AIS correlation
-- [ ] Candidate ranking
-- [ ] Top candidate
-- [ ] Trace Source
-- [ ] Historical trail
-- [ ] Timeline
+- [x] Normal traffic (live seeded fleet, browser verified)
+- [x] Spill detection event (scenario phase machine + fixed detection timestamp/incident)
+- [x] Spill appears (deterministic organic polygon renders, browser verified)
+- [x] AIS correlation (fleet-derived candidate scoring, not hard-coded)
+- [x] Candidate ranking (4 ranked candidates; top = Ocean Guardian 94%)
+- [x] Top candidate (vsl-001 Ocean Guardian, explainable factors + evidence)
+- [ ] Trace Source (investigation UI out of scope for 4.3–4.6; estimated release point renders as origin marker)
+- [x] Historical trail (candidate vessel trail selectable from the candidate card)
+- [ ] Timeline (Phase 7 — explicitly out of scope for 4.3–4.6)
 
 ### Acceptance
 
-- [ ] App feels live in mock mode
+- [x] App feels live in mock mode (moving fleet, drifting spill, ranked candidates)
 - [x] Vessels move smoothly (browser verified)
-- [ ] Incident can be discovered and selected
-- [x] Scenario is reproducible (seeded + fixed epoch; browser verified)
-- [ ] No manual data editing required
+- [x] Incident can be discovered and selected (incident panel + spill picking + candidate card, browser verified)
+- [x] Scenario is reproducible (seeded + fixed epoch; two providers & two engines identical; browser reload verified)
+- [x] No manual data editing required (all scenario data derived deterministically from seed + sim time)
 
 ---
 
@@ -650,11 +669,22 @@ Already installed in the project:
 - Node-side script: 80 vessels, type split 12/18/14/20/8/8, bit-identical fleet across two engine instances, movement rate matches kinematics, trail endpoints coherent.
 - Browser/CDP (live Chromium): 6 deck.gl layers present (spills, trails, vessels); 80 vessels render across all types with distinct headings/speeds; vessels move smoothly at a believable rate; 76 trails × 72 points spanning 24h; hover tooltip + click selection → DetailPanel sync verified; vessel & trail layer toggles verified; two consecutive reloads reproduce the identical initial scenario; 0 console errors/warnings; no render storm (~141 FPS, no long tasks).
 
+### Phase 4.3–4.6 — Deterministic Oil-Spill Attribution Scenario
+
+- Added `src/simulation/incident.ts`, `environment.ts`, `spillGeometry.ts`, `candidateScoring.ts`, `scenarioRunner.ts` — a self-contained, deterministic attribution scenario as pure functions of simulated time (reusing the Phase 4.1/4.2 centralized clock and 80-vessel fleet; no second clock, no second fleet).
+- `INC-2026-001` (SAR, high severity, 92% confidence, investigating): fixed detection timestamp/location; phase machine `normal → spill-detected → correlating → attribution-ready`; deterministic organic spill polygon (seeded harmonics, logistic growth to 26 km², drift along wind+current vector ~3.2 km/h @ 126°); back-tracked estimated release point connects the slick to historical vessel tracks.
+- Candidate correlation scores every fleet vessel (distance / temporal / behavioral / route / type prior); top candidate is the tanker `vsl-001` Ocean Guardian (0.935 ≈ 94%) with 3 plausible cargo alternatives and explainable `Evidence` items — nothing hard-coded.
+- Deterministic environment (seeded wind/current) without external APIs; drift coherence supports spill → drift → estimated source region → historical track narrative.
+- `MockDataProvider` serves the scenario through the unchanged `OceanWatchDataProvider` contract; `getIncidents/getIncident/getCandidates/getEnvironment` all honor optional `timestamp` for timeline compatibility.
+- Map + UI wired: spill layer renders the deterministic geometry (boundary, origin marker, drift in tooltip); DetailPanel candidate card is data-driven (94% match, Inspect Vessel & Trail → Ocean Guardian telemetry).
+- Verification: tsc + lint + production build pass; node-side determinism suite (two providers / two engines identical, geometry stable per sim-minute, organic shape, drift coherence); browser/CDP pixel + layer verification (spill renders, vessels move, trails render, Oil Spills toggle, candidate selection, fresh reload reproduces scenario, 0 console errors).
+
 ### Current truth
 
 - Deterministic maritime traffic simulation is implemented, deterministic, and browser verified.
-- Mock mode is live: 80 moving vessels with coherent historical trails served through the provider architecture.
-- Spill progression, wind/current simulation, timeline generation, and the end-to-end demo scenario remain for later sub-phases.
+- The deterministic oil-spill attribution scenario (4.3–4.6) is implemented, deterministic, and browser verified: incident INC-2026-001, organic drifted spill geometry, phase state machine, fleet-derived candidate scoring, evidence, deterministic environment, and drift coherence.
+- Mock mode is live: 80 moving vessels with coherent historical trails, a drifting organic spill, and ranked candidate attribution, all served through the provider architecture.
+- Timeline generation and the end-to-end demo scenario (Trace Source UI, Timeline) remain for later sub-phases; both are explicitly out of scope for 4.3–4.6.
 - Vessel LOD/3D (Phase 5), investigation (Phase 6), timeline/search (Phase 7), and FastAPI integration (Phase 8) remain NOT STARTED.
 
 

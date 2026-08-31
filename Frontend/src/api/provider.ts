@@ -1,5 +1,6 @@
 import type { OceanConditions, EnvironmentQuery } from '../types/environment';
 import type {
+  CandidatesQuery,
   IncidentQuery,
   OilSpillIncident,
   SuspectVessel,
@@ -23,7 +24,7 @@ export interface OceanWatchDataProvider {
 
   getIncidents(params?: IncidentQuery): Promise<OilSpillIncident[]>;
   getIncident(id: string): Promise<OilSpillIncident | null>;
-  getCandidates(incidentId: string): Promise<SuspectVessel[]>;
+  getCandidates(incidentId: string, params?: CandidatesQuery): Promise<SuspectVessel[]>;
 
   getTimeline(incidentId: string): Promise<TimelineEvent[]>;
 

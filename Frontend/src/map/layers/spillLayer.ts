@@ -24,7 +24,32 @@ interface SpillPolygonFeature {
 }
 
 /**
+ * Structural view of the deterministic scenario geometry attached to an
+ * incident (see `src/simulation/spillGeometry.ts`). The map layer must not
+ * reach into the simulation, so it reads whatever shape the provider puts on
+ * `incident.geometry`.
+ */
+interface SpillGeometryLike {
+  boundary?: number[][];
+  origin?: { lat: number; lng: number };
+  drift?: { speedKmH: number; bearingDeg: number };
+}
+
+function geometryOf(incident: OilSpillIncident): SpillGeometryLike | null {
+  const g = incident.geometry;
+  if (g && typeof g === 'object' && !Array.isArray(g)) {
+    return g as SpillGeometryLike;
+  }
+  return null;
+}
+
+/**
  * Generate a geographically scaled polygon representing the spill extent.
+ *
+ * When the scenario provides a computed boundary (organic shape, grown area,
+ * drifted centroid) it is used as-is — deterministic and stable for the same
+ * simulated timestamp. Otherwise the caller falls back to a circle scaled from
+ * `areaKm2`, which keeps rendering working for any incident without geometry.
  *
  * Formula:
  *   radiusKm = sqrt(areaKm2 / PI)
@@ -32,6 +57,11 @@ interface SpillPolygonFeature {
  *   longitudeDegrees = radiusKm / (111.32 * cos(latitudeRadians))
  */
 function createSpillPolygon(incident: OilSpillIncident, vertexCount: number = 48): [number, number][] {
+  const geom = geometryOf(incident);
+  if (geom?.boundary && geom.boundary.length >= 3) {
+    return geom.boundary as [number, number][];
+  }
+
   const { location, areaKm2 } = incident;
   const radiusKm = Math.sqrt(areaKm2 / Math.PI);
   const latDeg = radiusKm / 111.32;
@@ -53,6 +83,13 @@ function createSpillPolygon(incident: OilSpillIncident, vertexCount: number = 48
   coordinates.push(coordinates[0]);
 
   return coordinates;
+}
+
+/** Origin marker position: the estimated release point when known, else the detection point. */
+function originPosition(incident: OilSpillIncident): [number, number] {
+  const geom = geometryOf(incident);
+  if (geom?.origin) return [geom.origin.lng, geom.origin.lat];
+  return [incident.location.lng, incident.location.lat];
 }
 
 /**
@@ -122,7 +159,7 @@ export function createSpillLayers(options: SpillLayerOptions): Layer[] {
       pickable: true,
       autoHighlight: true,
       highlightColor: [255, 255, 255, 100],
-      getPosition: (d) => [d.location.lng, d.location.lat],
+      getPosition: (d) => originPosition(d),
       getRadius: 180,
       radiusMinPixels: 6,
       radiusMaxPixels: 14,

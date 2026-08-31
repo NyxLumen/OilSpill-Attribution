@@ -11,3 +11,22 @@ export { generateSimVessels, SIMULATION_SEED, VESSEL_COUNT } from './vesselGener
 export { SCENARIO_START_ISO, SCENARIO_START_MS, TIME_SCALE } from './kinematics';
 export type { SimVessel, TrafficPattern, TrailGenOptions } from './types';
 export type { SimRoute, RoutePoint, RouteState } from './geo';
+export {
+  INCIDENT_ID,
+  DETECTED_AT_ISO,
+  DETECTION_MS,
+  DRIFT_START_MS,
+  ATTRIBUTION_MS,
+  SCENARIO_INCIDENT_BASE,
+  scenarioPhaseAt,
+  incidentStatusForPhase,
+  detectionConfidence,
+} from './incident';
+export type { ScenarioPhase } from './incident';
+export { environmentAt, driftVectorAt } from './environment';
+export type { DriftVector } from './environment';
+export { spillStateAt, spillAreaKm2At, estimatedOrigin } from './spillGeometry';
+export type { SpillGeometryData, SpillState } from './spillGeometry';
+export { rankCandidates } from './candidateScoring';
+export { incidentStateAt, candidatesAt, scenarioStateAt, SCENARIO_ATTRIBUTION_MS } from './scenarioRunner';
+export type { IncidentView, ScenarioState } from './scenarioRunner';

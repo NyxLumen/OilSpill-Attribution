@@ -3,6 +3,25 @@ import { useQuery } from '@tanstack/react-query';
 import { useUIStore, useIncidentStore } from '@/store';
 import { useDataProvider } from '@/app/providers';
 import { VESSEL_TYPE_COLORS } from '@/map/layers';
+import type { VesselType } from '@/types/vessel';
+
+/** Human-readable class label for the candidate card. */
+function vesselClassLabel(type: VesselType): string {
+  switch (type) {
+    case 'tanker':
+      return 'Crude Oil Tanker';
+    case 'cargo':
+      return 'Cargo Vessel';
+    case 'container':
+      return 'Container Ship';
+    case 'fishing':
+      return 'Fishing Vessel';
+    case 'patrol':
+      return 'Patrol Craft';
+    default:
+      return 'Vessel';
+  }
+}
 
 /**
  * Incident Panel Content with real mock scenario data and candidate attribution flow
@@ -18,6 +37,20 @@ function IncidentPanelContent() {
   });
 
   const incident = incidents[0];
+
+  // Candidates come from the scenario runner (fleet-derived, deterministic).
+  const { data: candidates = [] } = useQuery({
+    queryKey: ['candidates', incident?.id],
+    queryFn: () => dataProvider.getCandidates(incident!.id),
+    enabled: incident != null,
+  });
+  const topCandidate = candidates[0];
+
+  const { data: candidateVessel } = useQuery({
+    queryKey: ['vessel', topCandidate?.vesselId],
+    queryFn: () => dataProvider.getVessel(topCandidate!.vesselId),
+    enabled: topCandidate != null,
+  });
 
   const handleSelectCandidate = (vesselId: string) => {
     selectVessel(vesselId);
@@ -75,28 +108,36 @@ function IncidentPanelContent() {
 
       {/* Top Candidate Card */}
       <div className="rounded-xl bg-surface-white border border-border-subtle p-5 shadow-floating">
-        <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-xl bg-amber-50 flex items-center justify-center border border-amber-200 shrink-0">
-            <Ship className="w-7 h-7 text-amber-600" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 mb-1">
-              <BarChart2 className="w-4 h-4 text-green-live" />
-              <span className="text-xs font-bold text-green-live uppercase tracking-wide">91% Match Candidate</span>
+        {topCandidate && candidateVessel ? (
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 rounded-xl bg-amber-50 flex items-center justify-center border border-amber-200 shrink-0">
+              <Ship className="w-7 h-7 text-amber-600" />
             </div>
-            <h4 className="text-base font-bold text-ocean-900 truncate">Ocean Guardian</h4>
-            <p className="text-xs text-ocean-600 mb-3">Crude Oil Tanker • IMO-XXXX1</p>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 mb-1">
+                <BarChart2 className="w-4 h-4 text-green-live" />
+                <span className="text-xs font-bold text-green-live uppercase tracking-wide">
+                  {Math.round(topCandidate.matchScore * 100)}% Match Candidate
+                </span>
+              </div>
+              <h4 className="text-base font-bold text-ocean-900 truncate">{candidateVessel.name}</h4>
+              <p className="text-xs text-ocean-600 mb-3">
+                {vesselClassLabel(candidateVessel.type)} • IMO-{candidateVessel.imo}
+              </p>
 
-            <button
-              type="button"
-              onClick={() => handleSelectCandidate('vsl-001')}
-              className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold bg-blue-accent text-white hover:bg-blue-accent/90 transition-smooth shadow-xs"
-            >
-              <span>Inspect Vessel & Trail</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+              <button
+                type="button"
+                onClick={() => handleSelectCandidate(topCandidate.vesselId)}
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold bg-blue-accent text-white hover:bg-blue-accent/90 transition-smooth shadow-xs"
+              >
+                <span>Inspect Vessel & Trail</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <p className="text-xs text-ocean-600">No candidate vessels ranked yet.</p>
+        )}
       </div>
     </div>
   );

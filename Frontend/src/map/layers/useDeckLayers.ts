@@ -53,6 +53,11 @@ export function useDeckLayers(): Layer[] {
     queryKey: ['incidents'],
     queryFn: () => dataProvider.getIncidents(),
     staleTime: 60 * 1000,
+    // The incident is scenario-derived: area growth and drift progress with
+    // the simulated clock, so re-snapshot at the same rate as the fleet. The
+    // geometry is cached per simulated minute, so this does not regenerate
+    // the polygon on every poll.
+    refetchInterval: SIM_POLL_MS,
   });
 
   const vesselIds = useMemo(() => vessels.map((v) => v.id), [vessels]);

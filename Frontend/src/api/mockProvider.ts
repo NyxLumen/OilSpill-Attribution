@@ -1,8 +1,14 @@
-import { MOCK_CANDIDATES, MOCK_INCIDENTS, MOCK_TIMELINES } from '../data/mock/incidents';
-import { getMockEnvironmentPoint } from '../data/mock/environment';
-import { simulationEngine } from '../simulation';
-import type { EnvironmentQuery, OceanConditions } from '../types/environment';
+import { MOCK_TIMELINES } from '../data/mock/incidents';
+import {
+  INCIDENT_ID,
+  simulationEngine,
+  incidentStateAt,
+  candidatesAt,
+  environmentAt,
+} from '../simulation';
+import type { OceanConditions, EnvironmentQuery } from '../types/environment';
 import type {
+  CandidatesQuery,
   IncidentQuery,
   OilSpillIncident,
   SuspectVessel,
@@ -16,25 +22,24 @@ import type { OceanWatchDataProvider } from './provider';
  * Deterministic mock data provider.
  *
  * This is a permanent development and demo capability (see AGENTS.md §4),
- * not temporary throwaway code. It returns typed domain models with no
- * network activity. Vessels and trails come from the centralized
- * `SimulationEngine`, which advances a single deterministic simulation clock;
- * incidents, candidates, timelines and environment remain static scenario
- * data.
+ * not temporary throwaway code. Vessels and trails come from the centralized
+ * `SimulationEngine`, which advances a single deterministic simulation clock.
+ * Incidents, candidates and environment are derived from the same simulated
+ * time by the INC-2026-001 scenario runner, so the whole world is coherent:
+ * the slick the map draws, the vessels passing through it, and the ranked
+ * candidate list all describe the same simulated moment. No direct network
+ * access; every value is a pure function of (seed, simulated time).
  */
 export class MockDataProvider implements OceanWatchDataProvider {
-  private readonly incidents: OilSpillIncident[];
-  private readonly candidates: Record<string, SuspectVessel[]>;
   private readonly timelines: Record<string, TimelineEvent[]>;
 
   constructor() {
-    this.incidents = structuredClone(MOCK_INCIDENTS);
-    this.candidates = structuredClone(MOCK_CANDIDATES);
     this.timelines = structuredClone(MOCK_TIMELINES);
   }
 
   async getVessels(params?: VesselQuery): Promise<Vessel[]> {
-    let result = simulationEngine.getVessels();
+    const atMs = params?.timestamp ? Date.parse(params.timestamp) : undefined;
+    let result = simulationEngine.getVessels(atMs);
 
     if (params?.types && params.types.length > 0) {
       const types = new Set(params.types);
@@ -71,7 +76,9 @@ export class MockDataProvider implements OceanWatchDataProvider {
   }
 
   async getIncidents(params?: IncidentQuery): Promise<OilSpillIncident[]> {
-    let result = this.incidents;
+    const simTime = params?.timestamp ? Date.parse(params.timestamp) : simulationEngine.getSimTimeMs();
+    const { incident } = incidentStateAt(simTime);
+    let result: OilSpillIncident[] = incident ? [incident] : [];
 
     if (params?.status && params.status.length > 0) {
       const statuses = new Set(params.status);
@@ -91,22 +98,25 @@ export class MockDataProvider implements OceanWatchDataProvider {
   }
 
   async getIncident(id: string): Promise<OilSpillIncident | null> {
-    const incident = this.incidents.find((i) => i.id === id);
+    if (id !== INCIDENT_ID) return null;
+    const { incident } = incidentStateAt(simulationEngine.getSimTimeMs());
     return incident ? structuredClone(incident) : null;
   }
 
-  async getCandidates(incidentId: string): Promise<SuspectVessel[]> {
-    return structuredClone(this.candidates[incidentId] ?? []);
+  async getCandidates(incidentId: string, params?: CandidatesQuery): Promise<SuspectVessel[]> {
+    const simTime = params?.timestamp ? Date.parse(params.timestamp) : simulationEngine.getSimTimeMs();
+    return structuredClone(candidatesAt(incidentId, simTime));
   }
 
   async getTimeline(incidentId: string): Promise<TimelineEvent[]> {
     return structuredClone(this.timelines[incidentId] ?? []);
   }
 
-  async getEnvironment(location: GeoPoint, _params?: EnvironmentQuery): Promise<OceanConditions> {
+  async getEnvironment(location: GeoPoint, params?: EnvironmentQuery): Promise<OceanConditions> {
     // Location is accepted for contract compatibility; mock conditions are
-    // currently constant across the region.
+    // currently uniform across the region.
     void location;
-    return structuredClone(getMockEnvironmentPoint());
+    const simTime = params?.timestamp ? Date.parse(params.timestamp) : simulationEngine.getSimTimeMs();
+    return structuredClone(environmentAt(simTime));
   }
 }

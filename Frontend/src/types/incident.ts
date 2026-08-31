@@ -72,4 +72,20 @@ export interface IncidentQuery {
   endDate?: string;
   bbox?: [number, number, number, number];
   limit?: number;
+  /**
+   * Simulated timestamp (ISO) to evaluate incident state at. Enables the
+   * scenario to be queried for a future Timeline without a second clock.
+   */
+  timestamp?: string;
+}
+
+/**
+ * Query parameters for fetching candidate vessels
+ */
+export interface CandidatesQuery {
+  /**
+   * Simulated timestamp (ISO) to evaluate candidates at. Returns an empty
+   * list before AIS correlation begins.
+   */
+  timestamp?: string;
 }

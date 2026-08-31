@@ -1,5 +1,6 @@
 import type { EnvironmentQuery, OceanConditions } from '../types/environment';
 import type {
+  CandidatesQuery,
   IncidentQuery,
   OilSpillIncident,
   SuspectVessel,
@@ -49,9 +50,9 @@ export class ApiDataProvider implements OceanWatchDataProvider {
     return this.mockFallback.getIncident(id);
   }
 
-  async getCandidates(incidentId: string): Promise<SuspectVessel[]> {
+  async getCandidates(incidentId: string, params?: CandidatesQuery): Promise<SuspectVessel[]> {
     // TODO: Implement actual API call when backend is ready
-    return this.mockFallback.getCandidates(incidentId);
+    return this.mockFallback.getCandidates(incidentId, params);
   }
 
   async getTimeline(incidentId: string): Promise<TimelineEvent[]> {
