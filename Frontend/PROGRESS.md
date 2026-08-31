@@ -6,8 +6,8 @@
 
 ## Current Status
 
-**Current phase: Phase 4 — Mock Operational Data (4.1–4.7 complete; timeline generation deferred to Phase 7)**  
-**Overall: Deck.gl layer visualization foundation complete and browser verified. Mock mode is now fully scenario-driven: a deterministic 30-vessel maritime traffic simulation built on real geography (land mask, ports, anchorages, shipping corridors, fishing grounds, patrol zones — no vessel on land, no trail through land, all routes validated), plus a deterministic oil-spill attribution scenario (incident INC-2026-001, organic drifted spill geometry, phase state machine, fleet-derived candidate scoring, evidence, deterministic environment, drift coherence), all served through the unchanged `OceanWatchDataProvider` contract.**
+**Current phase: Phase 4 — Mock Operational Data (4.1–4.8 complete; timeline generation deferred to Phase 7). Phase 4.8 = historical AIS snapshot acquisition + preprocessing + realism validation only — NOT integrated into the live app (synthetic fleet and INC-2026-001 scenario unchanged).**  
+**Overall: Deck.gl layer visualization foundation complete and browser verified. Mock mode is now fully scenario-driven: a deterministic 30-vessel maritime traffic simulation built on real geography (land mask, ports, anchorages, shipping corridors, fishing grounds, patrol zones — no vessel on land, no trail through land, all routes validated), plus a deterministic oil-spill attribution scenario (incident INC-2026-001, organic drifted spill geometry, phase state machine, fleet-derived candidate scoring, evidence, deterministic environment, drift coherence), all served through the unchanged `OceanWatchDataProvider` contract. A real 8-day AIS-derived snapshot (GFW Events API) has been acquired, processed, and validated, confirming the synthetic ports/traffic lanes/fishing grounds against real vessel activity (details in Phase 4.8 below).**
 
 The previous tracker was inconsistent: it called the UI redesign Phase 1.2 while also listing MapLibre/deck.gl installation as unfinished, even though those packages are already installed. This file is now the implementation source of truth.
 
@@ -16,7 +16,7 @@ Phase 0   Architecture & Contracts       MOSTLY COMPLETE
 Phase 1   UI + Visual Direction            COMPLETE
 Phase 2   Map Foundation                  COMPLETE
 Phase 3   Deck.gl Visualization             COMPLETE
-Phase 4   Mock Operational Data             IN PROGRESS (4.1–4.7 realistic constrained traffic + attribution scenario complete; timeline generation deferred to Phase 7)
+Phase 4   Mock Operational Data             IN PROGRESS (4.1–4.7 traffic + attribution scenario complete; 4.8 historical AIS snapshot acquired/validated, not integrated; timeline generation deferred to Phase 7)
 Phase 5   Vessel LOD / 3D                  NOT STARTED
 Phase 6   Incident Investigation           NOT STARTED
 Phase 7   Timeline / Playback               NOT STARTED
@@ -317,6 +317,29 @@ Replaces the density-first 80-vessel mock with a quality-first **30-vessel fleet
 - `scripts/verify-determinism.mjs` — two independent generations produce identical fleet/positions (pure + observed)/routes/journeys/patterns/trails/environment/spill/incident/candidates.
 - `scripts/probe-*.mjs` — all 32 route templates navigable; mask sanity at known references; patrol circuits navigable.
 - Browser/CDP (live Chromium): `vessels-2d-layer` IconLayer renders exactly 30 vessels and `vessel-trails-layer` renders 30 trails × 72 points; the 25 rendered generated positions and all 1800 rendered generated trail points cross-checked against the land mask — **zero on land**; spill layers render; click-on-vessel selects (halo layer + telemetry panel with correct sim state); Vessel Trails layer toggle removes/restores the trail layer; deck GPU picking returns the correct vessel; zero console/WebGL errors, zero failed network requests, per-type vessel icons load.
+
+### Phase 4.8 — Historical AIS Snapshot: Acquisition, Preprocessing, Realism Validation (2026-08-31)
+
+Data acquisition + evaluation **only** — no frontend integration, synthetic fleet untouched, INC-2026-001 scenario unchanged.
+
+**Source decision (`data/provenance/01-source-selection.md`):** evaluated 6 candidates; Global Fishing Watch v3 **Events API** selected as the best practically accessible source. Verified by live probing that the supplied `GFW_API_ACCESS_TOKEN` can list events but **cannot** fetch individual vessel tracks (403/404 on `vessels/{id}/tracks`), so the snapshot is **activity events** (port visits / fishing / loitering / encounters), not continuous trajectories. Token verified present only — never printed/stored/committed.
+
+**Tooling:**
+- `scripts/acquire-ais.mjs` — reproducible, env-driven paginated GFW Events fetch (filters in JSON body; token from `GFW_API_ACCESS_TOKEN`/`--env-file` only), deterministic filenames, raw JSONL → `data/raw/` (git-ignored) + `meta.json` sidecar, retry/backoff, probe mode.
+- `Frontend/scripts/preprocess-ais.mjs` — deterministic pipeline: parse → normalize → dedup → bbox filter → **land-mask validation reusing `landMask.ts`** (`isOnLand`, `isSafeWater`, `segmentCrossesLand`, `segmentLeavesSafeWater`) → per-vessel sequence + 48 h-gap track segmentation → speed/jump sanity → GFW→OceanWatch type normalization → compact dataset + quality report. Rerun is **byte-identical** (sha256 verified).
+- `.gitignore` hardened: `.env`, `.env.*` (with `!.env.example`), `data/raw/` ignored.
+
+**Acquired + processed:** 8-day window 2026-08-20→27, region lng 65–73 / lat 18–25. 16,662 raw events read → 3,538 valid in-region (2,732 port-visits, 767 loitering, 39 fishing), 969 vessels (381 with ≥2 events; 11 distinct fishing vessels). Outputs: `data/processed/ais-events_20260820_20260827_gulf-of-kutch.json` (2.7 MB) + `quality-report.json`; docs `data/provenance/provenance.md`, `data/processed/realism-analysis.md`.
+
+**Key validation results (all documented, none hidden):**
+- Real GFW anchorage positions match synthetic `PORTS` within ≤ 13 km (KANDLA and OKHA **exact**); Gulf ports SIKKA (229 visits) > MUNDRA (19) ≈ KANDLA (15) ≈ PORBANDAR (13) in the window. The synthetic maritime network is geographically correct.
+- Real fishing events map to synthetic `FISHING_GROUNDS` (82% within 100 km, median 51 km; dominant hotspot = Gulf-of-Kutch mouth).
+- Foreign deep-lane traffic confirmed real (82 in-region events; PAN/LBR/MHL/MLT/SGP/ARE tonnage incl. tankers, offshore support, drillships).
+- Data quality: 0 invalid coords, 1 duplicate id; 481 on-land events = real tidal-flat anchorages (not errors); all 7 "impossible speed" flags are **event-modeling artifacts** (anchorage-start position × departure-time), not bad AIS.
+
+**Recommendation (see realism analysis §7):** keep the synthetic fleet as the live demo driver; use this snapshot to calibrate identities/ports/dwell/lanes. Events are not continuous tracks, so they do not replace the synthetic underway trails the attribution scenario animates.
+
+**Verification:** `tsc -b` and `oxlint` and production build all pass; preprocessing determinism verified; secret scan (token absent from all outputs/diff) clean.
 
 ---
 
