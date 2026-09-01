@@ -827,7 +827,28 @@ Turns the Phase 4.8 calibration data into concrete corrections to the synthetic 
   - `npm run build` (`tsc -b && vite build`) clean (0 errors).
   - `npm run lint` clean (0 errors).
   - `scripts/verify-fleet.mjs`: All 50 vessels navigable and off land; verified all 6 patrol vessels have linear fairway spans between 44.3 km and 73.4 km with zero tight circles; all 50 vessels deterministic across generations; and `vsl-001` (Ocean Guardian) retains top candidate match score (0.965) with a 0.303 margin over second place.
-  - `scripts/verify-vessel-animation.mjs`: 50 vessels load at $t=0$; play advances active vessels smoothly; pause freezes all 50 vessels bit-identically; resume continues seamlessly; reset restores exact starting positions; 50% scrub is 100% deterministic; and `vsl-001` proceeds along its outbound westbound channel.
+### Task 3 — Oil Spill Detection Event & Progressive Slick Evolution
+
+- **Deterministic Spill State Integration (`src/simulation/incident.ts`, `src/simulation/spillGeometry.ts`, `src/api/mockProvider.ts`):**
+  - Reused the single authoritative simulation clock (`simTimeMs`) from `ScenarioController` without creating secondary clocks or React animation loops.
+  - Phase-gated incident visibility: prior to `07:42:00Z` (`NORMAL` phase), `dataProvider.getIncidents()` returns `[]` and `spillStateAt` returns `null`.
+  - At `07:42:00Z` (`SPILL DETECTED` phase), the incident becomes active with initial extent (`6.2 km²`, confidence `85%`, status `detected`, severity `high`).
+  - As time advances into `08:00:00Z` (`CORRELATING`) and `08:41:00Z` (`ATTRIBUTION_READY`), the organic 44-vertex slick boundary expands logistically ($6.2 \to 18.6+\text{ km}²$) and drifts WSW down-channel in response to simulated wind/current vector fields in verified safe water.
+- **Deck.gl WebGL Layer Visualization (`src/map/layers/spillLayer.ts`, `src/map/layers/useDeckLayers.ts`):**
+  - Rendered the slick as a realistic dark hydrocarbon polygon fill with subtle translucency over the ocean basemap.
+  - High-visibility amber/red boundary stroke (`lineWidthMinPixels: 2`) and prominent origin/SAR detection marker (`ScatterplotLayer`).
+  - Layer reactively polls at 300 ms during playback, and invalidates frame-instantaneously on timeline scrub, seek, reset, or pause/resume.
+- **Incident DetailPanel Synchronization (`src/components/layout/DetailPanel.tsx`):**
+  - Removed static dummy fallback cards.
+  - Before detection, the right stack remains clean without incident clutter during normal fleet monitoring.
+  - At detection, dynamically displays the `OIL SPILL DETECTED` card with incident ID `INC-2026-001`, `HYDROCARBON SLICK` classification, `SAR SATELLITE (Sentinel-1A)` source, live observed area (`km²`), confidence bar (`%`), status badge, and `TRACE SOURCE` CTA.
+  - During correlation/attribution, seamlessly introduces candidate attribution cards.
+- **Verification:**
+  - `npm run build` (`tsc -b && vite build`): 0 errors.
+  - `npm run lint`: 0 errors.
+  - `scripts/verify-spill-detection.mjs`: All checks passed across pre-detection emptiness, 07:42Z emergence, logistic area growth, WSW drift, timeline scrubbing reversibility, and fleet coexistence.
+  - `scripts/verify-scenario-controller.mjs`, `scripts/verify-determinism.mjs`, `scripts/verify-fleet.mjs`, `scripts/verify-vessel-animation.mjs`: All 5 automated suites passed.
+  - **Manual browser visual verification**: Verified on `http://localhost:5173` across initial baseline $\to$ play past 07:42Z $\to$ pause $\to$ scrub to 08:35Z (drift & growth) $\to$ scrub back to 07:20Z (disappearance) $\to$ reset.
 
 
 

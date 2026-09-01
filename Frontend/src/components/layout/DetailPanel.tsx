@@ -1,6 +1,6 @@
 import { X, Droplet, ArrowRight, Ship, Navigation, Compass, Gauge, Clock, Radio, RotateCcw } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { useUIStore, useIncidentStore } from '@/store';
+import { useUIStore, useIncidentStore, useScenarioStore } from '@/store';
 import { useDataProvider } from '@/app/providers';
 import { VESSEL_TYPE_COLORS } from '@/map/layers';
 import type { VesselType } from '@/types/vessel';
@@ -42,24 +42,44 @@ function formatIncidentDate(isoString: string): string {
 /**
  * Floating Oil Spill Detection Card
  */
+/**
+ * Floating Oil Spill Detection Card
+ */
 function OilSpillCard({
   incident,
   onTraceSource,
   onViewTimeline,
 }: {
-  incident: { id: string; detectedAt: string; areaKm2: number; confidence: number };
+  incident: {
+    id: string;
+    detectedAt: string;
+    areaKm2: number;
+    confidence: number;
+    severity?: string;
+    status?: string;
+    source?: string;
+  };
   onTraceSource: () => void;
   onViewTimeline: () => void;
 }) {
   const { setActivePanel } = useUIStore();
+  const severity = (incident.severity || 'high').toUpperCase();
+  const status = (incident.status || 'detected').toUpperCase();
+  const source = incident.source === 'sar' ? 'SAR SATELLITE (Sentinel-1A)' : (incident.source || 'SAR SATELLITE').toUpperCase();
 
   return (
     <div className="w-80 rounded-2xl bg-white/95 backdrop-blur-md border border-white/80 shadow-[0_12px_32px_rgba(0,0,0,0.08),0_2px_6px_rgba(0,0,0,0.04)] p-5 text-ocean-900 transition-smooth">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-ocean-900">
-          OIL SPILL DETECTED
-        </h3>
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+          </span>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-ocean-900">
+            OIL SPILL DETECTED
+          </h3>
+        </div>
         <button
           type="button"
           onClick={() => setActivePanel(null)}
@@ -70,34 +90,55 @@ function OilSpillCard({
         </button>
       </div>
 
-      {/* Incident Tag */}
-      <div className="flex items-center gap-2 mb-4 text-xs font-semibold text-ocean-700">
-        <div className="w-5 h-5 rounded-full bg-ocean-100 flex items-center justify-center text-ocean-800">
-          <Droplet className="w-3 h-3 fill-current" />
+      {/* Incident Tag & Status Badges */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2 text-xs font-semibold text-ocean-700">
+          <div className="w-5 h-5 rounded-full bg-red-50 flex items-center justify-center text-red-600">
+            <Droplet className="w-3 h-3 fill-current" />
+          </div>
+          <span>#{incident.id}</span>
         </div>
-        <span>Incident #{incident.id.startsWith('OS-') ? incident.id : `OS-${incident.id}`}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wide uppercase bg-red-50 text-red-700 border border-red-200/60">
+            {severity}
+          </span>
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wide uppercase bg-ocean-50 text-ocean-700 border border-ocean-200/60">
+            {status}
+          </span>
+        </div>
       </div>
 
-      {/* Metrics Grid */}
-      <div className="space-y-3 mb-5">
+      {/* Details Grid */}
+      <div className="space-y-3 mb-5 text-xs">
         <div>
-          <div className="text-[11px] font-medium text-ocean-500">Detected</div>
-          <div className="text-xs font-semibold text-ocean-800">
-            {formatIncidentDate(incident.detectedAt)}
-          </div>
+          <div className="text-[10px] font-semibold text-ocean-500 uppercase tracking-wider">Classification</div>
+          <div className="font-bold text-ocean-900 mt-0.5">HYDROCARBON SLICK</div>
         </div>
 
         <div>
-          <div className="text-[11px] font-medium text-ocean-500">Area</div>
-          <div className="text-lg font-extrabold text-ocean-900">
-            {incident.areaKm2.toFixed(1)} km²
+          <div className="text-[10px] font-semibold text-ocean-500 uppercase tracking-wider">Detection Source</div>
+          <div className="font-semibold text-ocean-800 mt-0.5">{source}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 pt-1 border-t border-ocean-100/70">
+          <div>
+            <div className="text-[10px] font-semibold text-ocean-500 uppercase tracking-wider">Detected Time</div>
+            <div className="font-semibold text-ocean-800 mt-0.5">
+              {formatIncidentDate(incident.detectedAt)}
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] font-semibold text-ocean-500 uppercase tracking-wider">Observed Area</div>
+            <div className="text-base font-extrabold text-ocean-900 mt-0.5">
+              {incident.areaKm2.toFixed(1)} km²
+            </div>
           </div>
         </div>
 
-        <div>
+        <div className="pt-1">
           <div className="flex items-center justify-between text-[11px] font-medium mb-1.5">
             <span className="text-ocean-500">Confidence</span>
-            <span className="font-bold text-ocean-800">{(incident.confidence * 100).toFixed(1)}%</span>
+            <span className="font-bold text-ocean-900">{(incident.confidence * 100).toFixed(1)}%</span>
           </div>
           <div className="w-full bg-ocean-100/80 rounded-full h-1.5 overflow-hidden">
             <div
@@ -112,7 +153,7 @@ function OilSpillCard({
       <button
         type="button"
         onClick={onTraceSource}
-        className="w-full py-2.5 rounded-xl bg-ocean-900 text-white font-bold text-xs tracking-wider uppercase hover:bg-ocean-800 active:scale-[0.99] transition-smooth shadow-md shadow-ocean-900/10 mb-3"
+        className="w-full py-2.5 rounded-xl bg-ocean-900 text-white font-bold text-xs tracking-wider uppercase hover:bg-ocean-800 active:scale-[0.99] transition-smooth shadow-md shadow-ocean-900/10 mb-2.5"
       >
         TRACE SOURCE
       </button>
@@ -123,7 +164,7 @@ function OilSpillCard({
         onClick={onViewTimeline}
         className="w-full flex items-center justify-between text-xs font-semibold text-ocean-600 hover:text-ocean-900 pt-1 group transition-smooth"
       >
-        <span>View Timeline</span>
+        <span>View Investigation</span>
         <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-smooth" />
       </button>
     </div>
@@ -462,67 +503,73 @@ export function DetailPanel() {
   const { activePanel, setActivePanel, closePanel } = useUIStore();
   const selectedVesselId = useIncidentStore((state) => state.selectedVesselId);
   const selectVessel = useIncidentStore((state) => state.selectVessel);
+  const selectIncident = useIncidentStore((state) => state.selectIncident);
+  const isPlaying = useScenarioStore((state) => state.isPlaying);
+  const phase = useScenarioStore((state) => state.phase);
 
   const { data: incidents = [] } = useQuery({
     queryKey: ['incidents'],
     queryFn: () => dataProvider.getIncidents(),
+    staleTime: 0,
+    refetchInterval: isPlaying ? 300 : false,
   });
 
-  const incident = incidents[0] ?? {
-    id: 'OS-2026-014',
-    detectedAt: '2026-08-14T14:32:00Z',
-    areaKm2: 18.4,
-    confidence: 0.947,
-  };
+  const activeIncident = incidents[0] || null;
+  const isDetected = activeIncident !== null && phase !== 'normal';
 
   const { data: candidates = [] } = useQuery({
-    queryKey: ['candidates', incident?.id],
-    queryFn: () => dataProvider.getCandidates(incident!.id),
+    queryKey: ['candidates', activeIncident?.id],
+    queryFn: () => (activeIncident ? dataProvider.getCandidates(activeIncident.id) : []),
+    enabled: Boolean(activeIncident && (phase === 'correlating' || phase === 'attribution-ready')),
+    staleTime: 0,
+    refetchInterval: isPlaying ? 300 : false,
   });
 
-  const topCandidate = candidates[0] ?? {
-    vesselId: 'vessel-01',
-    matchScore: 0.91,
-  };
+  const topCandidate = candidates[0] || null;
 
   const { data: candidateVessel } = useQuery({
     queryKey: ['vessel', topCandidate?.vesselId],
-    queryFn: () => dataProvider.getVessel(topCandidate!.vesselId),
+    queryFn: () => (topCandidate ? dataProvider.getVessel(topCandidate.vesselId) : null),
+    enabled: Boolean(topCandidate),
+    staleTime: 0,
   });
-
-  const displayVessel = candidateVessel ?? {
-    id: 'vessel-01',
-    name: 'MT Ocean Star',
-    type: 'tanker' as VesselType,
-    imo: '9876543',
-    speed: 12.4,
-    heading: 245,
-    status: 'underway',
-    position: { lat: 18.42, lng: 68.17 },
-  };
 
   const { data: vessels = [] } = useQuery({
     queryKey: ['vessels'],
     queryFn: () => dataProvider.getVessels(),
+    staleTime: 0,
+    refetchInterval: isPlaying ? 150 : false,
   });
 
   const selectedVessel = selectedVesselId
-    ? vessels.find((v) => v.id === selectedVesselId) || displayVessel
+    ? vessels.find((v) => v.id === selectedVesselId) || null
     : null;
 
   const handleTraceSource = () => {
-    selectVessel(displayVessel.id);
-    setActivePanel('incidents');
+    if (activeIncident) {
+      selectIncident(activeIncident.id);
+      if (candidateVessel) {
+        selectVessel(candidateVessel.id);
+      }
+      setActivePanel('incidents');
+    }
   };
 
   const handleViewDetails = () => {
-    selectVessel(displayVessel.id);
-    setActivePanel('vessels');
+    if (candidateVessel) {
+      selectVessel(candidateVessel.id);
+      setActivePanel('vessels');
+    }
   };
 
   const handleSelectVesselFromList = (vesselId: string) => {
     selectVessel(vesselId);
   };
+
+  // If nothing to display in default mode before detection, return null
+  if (activePanel === null && !isDetected && !selectedVessel) {
+    return null;
+  }
 
   return (
     <div className="absolute right-6 top-24 z-20 flex flex-col gap-4">
@@ -541,28 +588,42 @@ export function DetailPanel() {
         )
       ) : activePanel === 'incidents' ? (
         /* 2. Incidents Investigation View */
-        <IncidentInvestigationPanel
-          incident={incident}
-          candidates={candidates.length > 0 ? candidates : [topCandidate]}
-          onSelectCandidate={(vesselId) => {
-            selectVessel(vesselId);
-            setActivePanel('vessels');
-          }}
-          onClose={() => closePanel()}
-        />
+        activeIncident ? (
+          <IncidentInvestigationPanel
+            incident={activeIncident}
+            candidates={candidates}
+            onSelectCandidate={(vesselId) => {
+              selectVessel(vesselId);
+              setActivePanel('vessels');
+            }}
+            onClose={() => closePanel()}
+          />
+        ) : null
       ) : (
-        /* 3. Default Overview: Reference Dual Cards */
+        /* 3. Default Overview: Dynamic Spill Detection & Candidate Focus */
         <>
-          <OilSpillCard
-            incident={incident}
-            onTraceSource={handleTraceSource}
-            onViewTimeline={() => setActivePanel('incidents')}
-          />
-          <TopCandidateCard
-            candidate={topCandidate}
-            vessel={displayVessel}
-            onViewDetails={handleViewDetails}
-          />
+          {isDetected && activeIncident && (
+            <OilSpillCard
+              incident={activeIncident}
+              onTraceSource={handleTraceSource}
+              onViewTimeline={() => setActivePanel('incidents')}
+            />
+          )}
+
+          {isDetected && (phase === 'correlating' || phase === 'attribution-ready') && topCandidate && candidateVessel && (
+            <TopCandidateCard
+              candidate={topCandidate}
+              vessel={candidateVessel}
+              onViewDetails={handleViewDetails}
+            />
+          )}
+
+          {selectedVessel && (
+            <VesselTelemetryDrawer
+              vessel={selectedVessel}
+              onClose={() => selectVessel(null)}
+            />
+          )}
         </>
       )}
     </div>
