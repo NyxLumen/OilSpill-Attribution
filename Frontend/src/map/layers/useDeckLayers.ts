@@ -62,18 +62,25 @@ export function useDeckLayers(): Layer[] {
 
   const vesselIds = useMemo(() => vessels.map((v) => v.id), [vessels]);
 
+  // Selective trail querying: fetch all trails if layer is visible, or only the selected vessel's trail
+  const trailTargetIds = useMemo(() => {
+    if (layerVisibility.vesselTrails) return vesselIds;
+    if (selectedVesselId) return [selectedVesselId];
+    return [];
+  }, [layerVisibility.vesselTrails, selectedVesselId, vesselIds]);
+
   const { data: trails = [] } = useQuery({
-    queryKey: ['vessel-trails', vesselIds],
+    queryKey: ['vessel-trails', trailTargetIds],
     queryFn: async () => {
-      if (vesselIds.length === 0) return [];
+      if (trailTargetIds.length === 0) return [];
       const results = await Promise.all(
-        vesselIds.map((id) => dataProvider.getVesselTrail(id))
+        trailTargetIds.map((id) => dataProvider.getVesselTrail(id))
       );
       return results.filter((t): t is VesselTrail => t !== null);
     },
-    enabled: vesselIds.length > 0,
+    enabled: trailTargetIds.length > 0,
     staleTime: 0,
-    refetchInterval: isPlaying ? SIM_POLL_TRAILS_MS : false,
+    refetchInterval: isPlaying && trailTargetIds.length > 0 ? SIM_POLL_TRAILS_MS : false,
     placeholderData: keepPreviousData,
   });
 
@@ -126,8 +133,9 @@ export function useDeckLayers(): Layer[] {
       );
     }
 
-    // 2. Vessel Trails Layer
-    if (layerVisibility.vesselTrails && trails.length > 0) {
+    // 2. Vessel Trails Layer (Rendered if layer is toggled on OR when a vessel is selected)
+    const showTrails = (layerVisibility.vesselTrails || selectedVesselId !== null) && trails.length > 0;
+    if (showTrails) {
       activeLayers.push(
         ...createTrailLayers({
           trails,

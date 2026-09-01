@@ -59,7 +59,7 @@ import type { AisJitter, SimVessel, TrafficPattern } from './types';
 export const SIMULATION_SEED = 20_260_827;
 
 /** Total fleet size (scenario core + generated traffic). */
-export const VESSEL_COUNT = 36;
+export const VESSEL_COUNT = 50;
 
 const MS_PER_MIN = 60_000;
 const MS_PER_HOUR = 3_600_000;
@@ -73,14 +73,16 @@ const NAME_PREFIX = [
   'Pearl', 'Coral', 'Harbor', 'Kutch', 'Pride', 'Meridian', 'Falcon', 'Dawn',
   'Tide', 'Golden', 'Sapphire', 'Emerald', 'Raj', 'Shakti', 'Deep', 'Blue',
   'Silver', 'Neptune', 'Trident', 'Seas', 'Wave', 'Cliff', 'Sundari', 'Ganga',
-  'Narmada', 'Tapi', 'Jumna', 'Gomati', 'Lakshmi', 'Kaveri',
+  'Narmada', 'Tapi', 'Jumna', 'Gomati', 'Lakshmi', 'Kaveri', 'Surya', 'Varun',
+  'Albatross', 'Sentinel', 'Osprey', 'Cormorant', 'Garuda', 'Vijay',
 ];
 
 const NAME_SUFFIX = [
   'Navigator', 'Trader', 'Voyager', 'Horizon', 'Knight', 'Pride', 'Express',
   'Spirit', 'Rose', 'Comet', 'Dolphin', 'Heron', 'Quest', 'Merchant',
   'Success', 'Fortune', 'Venture', 'Rider', 'Sailor', 'Queen', 'Star',
-  'Glory', 'Light', 'Companion', 'Grace', 'Arrow',
+  'Glory', 'Light', 'Companion', 'Grace', 'Arrow', 'Guardian', 'Leader',
+  'Pioneer', 'Defender', 'Protector',
 ];
 
 /** AIS realism defaults per vessel class. */
@@ -135,10 +137,10 @@ const GENERATED_SPECS: NewVesselSpec[] = [
   { id: 'vsl-022', type: 'fishing', routeKind: 'fishing', args: ['okha', 'offOkha'], speedRange: [4, 7], departWindowMin: [375, 540], originLabel: 'Okha', destinationLabel: 'Ground: off Okha' },
   { id: 'vsl-023', type: 'fishing', routeKind: 'fishing', args: ['porbandar', 'southOffshore'], speedRange: [4, 7], departWindowMin: [375, 540], originLabel: 'Porbandar', destinationLabel: 'Ground: south offshore' },
   { id: 'vsl-024', type: 'fishing', routeKind: 'fishing', args: ['mandvi', 'gulfMouth'], speedRange: [4, 7], departWindowMin: [375, 540], originLabel: 'Mandvi', destinationLabel: 'Ground: gulf mouth' },
-  // --- patrol (localized closed circuits) ---
-  { id: 'vsl-025', type: 'patrol', routeKind: 'patrol', args: ['kandla'], speedRange: [12, 18], departWindowMin: [0, 0], originLabel: 'Patrol zone: Kandla', destinationLabel: 'Patrol zone: Kandla' },
-  { id: 'vsl-026', type: 'patrol', routeKind: 'patrol', args: ['mundra'], speedRange: [12, 18], departWindowMin: [0, 0], originLabel: 'Patrol zone: Mundra', destinationLabel: 'Patrol zone: Mundra' },
-  { id: 'vsl-027', type: 'patrol', routeKind: 'patrol', args: ['porbandar'], speedRange: [12, 18], departWindowMin: [0, 0], originLabel: 'Patrol zone: Porbandar', destinationLabel: 'Patrol zone: Porbandar' },
+  // --- patrol (localized sweeps) ---
+  { id: 'vsl-025', type: 'patrol', routeKind: 'patrol', args: ['kandla'], speedRange: [12, 18], departWindowMin: [0, 0], originLabel: 'Patrol: Kandla fairway', destinationLabel: 'Patrol: Kandla fairway' },
+  { id: 'vsl-026', type: 'patrol', routeKind: 'patrol', args: ['mundra'], speedRange: [12, 18], departWindowMin: [0, 0], originLabel: 'Patrol: Mundra fairway', destinationLabel: 'Patrol: Mundra fairway' },
+  { id: 'vsl-027', type: 'patrol', routeKind: 'patrol', args: ['porbandar'], speedRange: [12, 18], departWindowMin: [0, 0], originLabel: 'Patrol: Porbandar coast', destinationLabel: 'Patrol: Porbandar coast' },
   // --- anchored (stationary holds at anchorages) ---
   { id: 'vsl-028', type: 'other', routeKind: 'anchored', args: ['kandla'], speedRange: [0.6, 1.2], departWindowMin: [0, 0], originLabel: 'Anchored: Kandla roadstead', destinationLabel: 'Anchored: Kandla roadstead' },
   { id: 'vsl-029', type: 'other', routeKind: 'anchored', args: ['porbandar'], speedRange: [0.6, 1.2], departWindowMin: [0, 0], originLabel: 'Anchored: Porbandar roadstead', destinationLabel: 'Anchored: Porbandar roadstead' },
@@ -150,10 +152,28 @@ const GENERATED_SPECS: NewVesselSpec[] = [
   // Fishing on the two dominant real grounds (gulfMouth 14 / offMandvi 11 events).
   { id: 'vsl-033', type: 'fishing', routeKind: 'fishing', args: ['mandvi', 'gulfMouth'], speedRange: [4, 7], departWindowMin: [450, 600], originLabel: 'Mandvi', destinationLabel: 'Ground: gulf mouth' },
   { id: 'vsl-034', type: 'fishing', routeKind: 'fishing', args: ['mandvi', 'offMandvi'], speedRange: [4, 7], departWindowMin: [450, 600], originLabel: 'Mandvi', destinationLabel: 'Ground: off Mandvi' },
-  // Roadstead drifters for the busy Gulf terminals (real anchorages hold far
-  // more laid-up tonnage than the baseline 3).
+  // Roadstead drifters for the busy Gulf terminals
   { id: 'vsl-035', type: 'other', routeKind: 'anchored', args: ['sikka'], speedRange: [0.6, 1.2], departWindowMin: [0, 0], originLabel: 'Anchored: Sikka roadstead', destinationLabel: 'Anchored: Sikka roadstead' },
   { id: 'vsl-036', type: 'other', routeKind: 'anchored', args: ['mundra'], speedRange: [0.6, 1.2], departWindowMin: [0, 0], originLabel: 'Anchored: Mundra roadstead', destinationLabel: 'Anchored: Mundra roadstead' },
+  // --- fleet expansion to 50 vessels ---
+  // Additional patrol sweeps
+  { id: 'vsl-037', type: 'patrol', routeKind: 'patrol', args: ['okha'], speedRange: [13, 17], departWindowMin: [0, 0], originLabel: 'Patrol: Okha approach', destinationLabel: 'Patrol: Okha approach' },
+  { id: 'vsl-038', type: 'patrol', routeKind: 'patrol', args: ['diu'], speedRange: [13, 17], departWindowMin: [0, 0], originLabel: 'Patrol: South Saurashtra', destinationLabel: 'Patrol: South Saurashtra' },
+  // Deep-lane and Gulf commercial corridors
+  { id: 'vsl-039', type: 'tanker', routeKind: 'deep', args: ['mumbai', 'karachi'], speedRange: [10, 14], departWindowMin: [320, 420], dwellHours: [4, 8], originLabel: 'Mumbai', destinationLabel: 'Karachi' },
+  { id: 'vsl-040', type: 'tanker', routeKind: 'gulf', args: ['mumbai', 'vadinar'], speedRange: [10, 13], departWindowMin: [450, 600], dwellHours: [4, 7], originLabel: 'Mumbai', destinationLabel: 'Vadinar' },
+  { id: 'vsl-041', type: 'container', routeKind: 'deep', args: ['karachi', 'mumbai'], speedRange: [15, 20], departWindowMin: [360, 480], dwellHours: [4, 8], originLabel: 'Karachi', destinationLabel: 'Mumbai' },
+  { id: 'vsl-042', type: 'cargo', routeKind: 'coastal', args: ['okha', 'porbandar'], speedRange: [11, 14], departWindowMin: [450, 600], dwellHours: [2, 5], originLabel: 'Okha', destinationLabel: 'Porbandar' },
+  { id: 'vsl-043', type: 'cargo', routeKind: 'coastal', args: ['porbandar', 'veraval'], speedRange: [10, 14], departWindowMin: [450, 600], dwellHours: [2, 5], originLabel: 'Porbandar', destinationLabel: 'Veraval' },
+  { id: 'vsl-044', type: 'container', routeKind: 'gulf', args: ['karachi', 'kandla'], speedRange: [14, 18], departWindowMin: [450, 620], dwellHours: [3, 6], originLabel: 'Karachi', destinationLabel: 'Kandla' },
+  // Fishing operations
+  { id: 'vsl-045', type: 'fishing', routeKind: 'fishing', args: ['okha', 'gulfMouth'], speedRange: [4, 7], departWindowMin: [400, 560], originLabel: 'Okha', destinationLabel: 'Ground: gulf mouth' },
+  { id: 'vsl-046', type: 'fishing', routeKind: 'fishing', args: ['porbandar', 'offPorbandar'], speedRange: [4, 7], departWindowMin: [400, 560], originLabel: 'Porbandar', destinationLabel: 'Ground: off Porbandar' },
+  { id: 'vsl-047', type: 'fishing', routeKind: 'fishing', args: ['veraval', 'offVeraval'], speedRange: [4, 7], departWindowMin: [400, 560], originLabel: 'Veraval', destinationLabel: 'Ground: off Veraval' },
+  // Additional commercial / offshore
+  { id: 'vsl-048', type: 'tanker', routeKind: 'deep', args: ['karachi', 'mumbai'], speedRange: [9, 13], departWindowMin: [340, 460], dwellHours: [4, 8], originLabel: 'Karachi', destinationLabel: 'Mumbai' },
+  { id: 'vsl-049', type: 'cargo', routeKind: 'offshore', args: ['karachi', 'porbandar'], speedRange: [11, 15], departWindowMin: [420, 580], dwellHours: [3, 6], originLabel: 'Karachi', destinationLabel: 'Porbandar' },
+  { id: 'vsl-050', type: 'container', routeKind: 'coastal', args: ['mumbai', 'veraval'], speedRange: [14, 18], departWindowMin: [420, 580], dwellHours: [3, 6], originLabel: 'Mumbai', destinationLabel: 'Veraval' },
 ];
 
 /** All parameters a vessel needs, derived deterministically from the seed. */

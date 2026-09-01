@@ -36,17 +36,17 @@ export function createTrailLayers(options: TrailLayerOptions): Layer[] {
       data: validTrails,
       pickable: false, // Trails remain subordinate to vessel icons for picking
       widthScale: 1,
-      widthMinPixels: 2,
-      widthMaxPixels: 6,
+      widthMinPixels: 1.5,
+      widthMaxPixels: 5,
       capRounded: true,
       jointRounded: true,
       getPath: (d: VesselTrail) => d.points.map((p): [number, number] => [p.lng, p.lat]),
       getColor: (d) => {
         const isSelected = d.vesselId === selectedVesselId;
-        // Selected trail: bright golden accent; normal trails: subdued cyan/blue
-        return isSelected ? [245, 158, 11, 230] : [59, 130, 246, 140];
+        // Selected trail: bright golden accent; normal background trails: subtle translucent blue
+        return isSelected ? [245, 158, 11, 235] : [59, 130, 246, 85];
       },
-      getWidth: (d) => (d.vesselId === selectedVesselId ? 3.5 : 2),
+      getWidth: (d) => (d.vesselId === selectedVesselId ? 3.5 : 1.5),
       updateTriggers: {
         getColor: [selectedVesselId],
         getWidth: [selectedVesselId],

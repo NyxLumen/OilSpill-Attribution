@@ -210,46 +210,36 @@ export interface FishingRouteSpec {
   loopEndKm: number;
 }
 
-/** Upper bound for loiter vertices around the ground centre (km). */
-const FISHING_LOOP_MAX_RADIUS_KM = 2.4;
-/** Deterministic radius shrink used when the meander clips the coast. */
-const FISHING_LOOP_SHRINKS = [1, 0.7, 0.5, 0.35];
+/** Upper bound for trawling sweeps around the ground centre (km). */
+const FISHING_SWEEP_RADIUS_KM = 4.8;
+/** Deterministic radius shrink used when the sweep clips the coast. */
+const FISHING_LOOP_SHRINKS = [1, 0.75, 0.5, 0.35];
 
 /**
- * Irregular loiter meander around a fishing ground.
+ * Trawling sweep around a fishing ground.
  *
- * A real trawl set works the same patch with a meandering, deliberately
- * non-geometric pattern — never the fixed equilateral triangle every vessel
- * used to share. Vertices are drawn per vessel from `seedKey` (the vessel id),
- * so bearings and radii are irregular and differ across the fleet, while the
- * whole fleet stays deterministic (same seed ⇒ same meander). The circuit
- * returns to the ground centre so the existing journey legs (transit out →
- * loiter → transit home) are unchanged.
+ * Real fishing vessels work a fishing bank using elongated trawling sweeps
+ * (long linear drags back and forth across the ground) rather than tight
+ * geometric loops. Vertices are derived per vessel from `seedKey`, producing
+ * natural, realistic paths that remain 100% deterministic and navigable.
  */
 export function fishingRoute(homeId: string, groundKey: string, seedKey = `${homeId}:${groundKey}`): FishingRouteSpec {
   const home = PORTS[homeId];
   const ground = FISHING_GROUNDS[groundKey];
   if (!home || !ground) throw new Error(`fishingRoute: unknown ${homeId}/${groundKey}`);
 
-  // Per-vessel RNG — independent of the fleet draw order, so varying the
-  // meander never perturbs any other vessel's deterministic parameters.
   const rng = mulberry32(hashString(seedKey));
-  const vertexCount = 4 + Math.floor(rng() * 3); // 4..6 turning points
-  const raw: { bearing: number; radiusKm: number }[] = [];
-  let bearing = rng() * 360;
-  for (let i = 0; i < vertexCount; i++) {
-    bearing = (bearing + 60 + rng() * 100) % 360; // irregular turning, no equal spacing
-    raw.push({ bearing, radiusKm: 0.5 + rng() * (FISHING_LOOP_MAX_RADIUS_KM - 0.5) });
-  }
+  const trawlAngle = Math.floor(rng() * 180);
+  const sweepLengthKm = 3.5 + rng() * (FISHING_SWEEP_RADIUS_KM - 3.5);
 
   let lastError: string | undefined;
   for (const shrink of FISHING_LOOP_SHRINKS) {
-    const loop = raw.map((v) => destinationPoint(ground, v.bearing, v.radiusKm * shrink));
-    const waypoints = chainPoints([home.approach], [ground], loop, [ground], [home.approach]);
+    const p1 = destinationPoint(ground, trawlAngle, sweepLengthKm * shrink);
+    const p2 = destinationPoint(ground, (trawlAngle + 180) % 360, sweepLengthKm * shrink);
+    const waypoints = chainPoints([home.approach], [ground], [p1], [p2], [ground], [home.approach]);
     const result = checkNavigability(waypoints);
     if (result.ok) {
       const route = buildRoute(waypoints);
-      // Locate the ground centre in the (possibly deduplicated) waypoint list.
       let outIdx = -1;
       let retIdx = -1;
       for (let i = 0; i < waypoints.length; i++) {
@@ -265,32 +255,73 @@ export function fishingRoute(homeId: string, groundKey: string, seedKey = `${hom
     }
     lastError = `(${result.badWaypoint ?? result.badSegment})`;
   }
-  throw new Error(`Fishing route ${homeId}→${groundKey} not navigable at any meander scale ${lastError}`);
+  throw new Error(`Fishing route ${homeId}→${groundKey} not navigable at any scale ${lastError}`);
 }
 
 // ---------------------------------------------------------------------------
-// Patrol circuits and anchored holds.
+// Patrol sweeps and anchored holds.
 // ---------------------------------------------------------------------------
 
-const PATROL_RADIUS_KM = 1.8;
-
-/** Localized closed patrol circuit around a zone centre. */
+/**
+ * Elongated maritime patrol sweep along a sector fairway / approach corridor.
+ *
+ * Real coast guard and naval patrol vessels maintain steady sweeps back and
+ * forth along major navigation fairways and border corridors rather than
+ * orbiting tiny circles.
+ */
 export function patrolCircuit(centerKey: string): SimRoute {
   const center = PATROL_CENTERS[centerKey];
   if (!center) throw new Error(`patrolCircuit: unknown ${centerKey}`);
-  const waypoints = [
-    destinationPoint(center, 45, PATROL_RADIUS_KM),
-    destinationPoint(center, 135, PATROL_RADIUS_KM),
-    destinationPoint(center, 225, PATROL_RADIUS_KM),
-    destinationPoint(center, 315, PATROL_RADIUS_KM),
-  ];
-  // Closed loop: return to the first vertex.
-  const closed = [...waypoints, waypoints[0]];
-  const result = checkNavigability(closed);
-  if (!result.ok) {
-    throw new Error(`Patrol circuit ${centerKey} not navigable (${result.badWaypoint ?? result.badSegment})`);
+
+  let waypoints: RoutePoint[];
+  if (centerKey === 'kandla') {
+    waypoints = [
+      { lat: 22.78, lng: 70.02 },
+      { lat: 22.7, lng: 69.8 },
+      { lat: 22.65, lng: 69.52 },
+      { lat: 22.7, lng: 69.8 },
+      { lat: 22.78, lng: 70.02 },
+    ];
+  } else if (centerKey === 'mundra') {
+    waypoints = [
+      { lat: 22.72, lng: 69.62 },
+      { lat: 22.62, lng: 69.3 },
+      { lat: 22.52, lng: 69.05 },
+      { lat: 22.62, lng: 69.3 },
+      { lat: 22.72, lng: 69.62 },
+    ];
+  } else if (centerKey === 'porbandar') {
+    waypoints = [
+      { lat: 21.75, lng: 69.2 },
+      { lat: 21.52, lng: 69.38 },
+      { lat: 21.35, lng: 69.6 },
+      { lat: 21.52, lng: 69.38 },
+      { lat: 21.75, lng: 69.2 },
+    ];
+  } else if (centerKey === 'okha') {
+    waypoints = [
+      { lat: 22.47, lng: 68.96 },
+      { lat: 22.3, lng: 68.88 },
+      { lat: 22.1, lng: 68.8 },
+      { lat: 22.3, lng: 68.88 },
+      { lat: 22.47, lng: 68.96 },
+    ];
+  } else {
+    // diu / South Saurashtra
+    waypoints = [
+      { lat: 20.66, lng: 70.9 },
+      { lat: 20.55, lng: 70.6 },
+      { lat: 20.5, lng: 70.3 },
+      { lat: 20.55, lng: 70.6 },
+      { lat: 20.66, lng: 70.9 },
+    ];
   }
-  return buildRoute(closed);
+
+  const result = checkNavigability(waypoints);
+  if (!result.ok) {
+    throw new Error(`Patrol sweep ${centerKey} not navigable (${result.badWaypoint ?? result.badSegment})`);
+  }
+  return buildRoute(waypoints);
 }
 
 /** Stationary hold at an anchorage point. */

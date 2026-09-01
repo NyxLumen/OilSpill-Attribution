@@ -3,13 +3,10 @@ import { createJiti } from 'jiti';
 const jiti = createJiti(import.meta.url, { fsCache: false });
 
 const {
-  ScenarioController,
   scenarioController,
   SCENARIO_TIMELINE_START_MS,
-  SCENARIO_TIMELINE_END_MS,
 } = await jiti.import('../src/simulation/scenarioController.ts');
 
-const { simulationEngine } = await jiti.import('../src/simulation/simulationEngine.ts');
 const { MockDataProvider } = await jiti.import('../src/api/mockProvider.ts');
 
 console.log('=== VERIFYING VESSEL ANIMATION & DETERMINISM FROM CLOCK ===\n');
@@ -22,12 +19,12 @@ scenarioController.pause();
 scenarioController.reset();
 
 const vStart = await provider.getVessels();
-if (vStart.length !== 36) {
-  throw new Error(`Expected 36 vessels, got ${vStart.length}`);
+if (vStart.length !== 50) {
+  throw new Error(`Expected 50 vessels, got ${vStart.length}`);
 }
 
 const vStartSnap = JSON.stringify(vStart.map(v => ({ id: v.id, lat: v.position.lat, lng: v.position.lng, heading: v.heading, speed: v.speed })));
-console.log(`✓ 36 vessels loaded at initial timestamp (${new Date(scenarioController.getSimTimeMs()).toISOString()})`);
+console.log(`✓ 50 vessels loaded at initial timestamp (${new Date(scenarioController.getSimTimeMs()).toISOString()})`);
 
 // 2. Test Vessel Movement during Play
 console.log('\n2. Testing Fleet Movement during Play...');
@@ -46,8 +43,8 @@ for (let i = 0; i < vStart.length; i++) {
     movedCount++;
   }
 }
-console.log(`✓ Playing advanced positions: ${movedCount}/36 vessels changed coordinates naturally`);
-if (movedCount < 20) {
+console.log(`✓ Playing advanced positions: ${movedCount}/50 vessels changed coordinates naturally`);
+if (movedCount < 25) {
   throw new Error(`Expected active vessels to move, only ${movedCount} moved`);
 }
 
@@ -70,7 +67,7 @@ for (let i = 0; i < vPaused1.length; i++) {
     throw new Error(`Vessel ${v1.id} moved while paused!`);
   }
 }
-console.log(`✓ All 36 vessels remained completely frozen across paused interval at ${new Date(tFreeze).toISOString()}`);
+console.log(`✓ All 50 vessels remained completely frozen across paused interval at ${new Date(tFreeze).toISOString()}`);
 
 // 4. Test Resume
 console.log('\n4. Testing Fleet Resume...');
@@ -96,7 +93,7 @@ const vResetSnap = JSON.stringify(vReset.map(v => ({ id: v.id, lat: v.position.l
 if (vStartSnap !== vResetSnap) {
   throw new Error('Reset positions do not match initial scenario start positions!');
 }
-console.log('✓ Reset returned all 36 vessels to bit-identical initial scenario positions');
+console.log('✓ Reset returned all 50 vessels to bit-identical initial scenario positions');
 
 // 6. Test Timeline Scrubbing (Determinism at t=50%)
 console.log('\n6. Testing Scrubbing Determinism at 50% Progress...');

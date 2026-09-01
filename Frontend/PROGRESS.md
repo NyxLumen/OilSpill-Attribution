@@ -807,7 +807,27 @@ Turns the Phase 4.8 calibration data into concrete corrections to the synthetic 
 - **Verification:**
   - `npm run build` (`tsc -b && vite build`) clean (0 errors).
   - `npm run lint` clean (0 errors).
-  - `scripts/verify-vessel-animation.mjs`: 36 vessels loaded at $t=0$; playing advances positions naturally for all active vessels; pausing freezes all 36 vessels bit-identically across time; resuming continues from paused coordinates; reset returns all 36 vessels to bit-identical baseline positions; scrubbing to 50% ($t=\text{08:15:00Z}$) is 100% deterministic; and top candidate `vsl-001` (Ocean Guardian) moves outbound west along the verified deep-water channel.
+  - `scripts/verify-vessel-animation.mjs`: All checks passed.
+
+### Task 2.5 — Maritime Traffic Realism, Trajectory Rework & 50-Vessel Density
+
+- **Fleet Expansion to 50 Vessels (`src/simulation/vesselGenerator.ts`):**
+  - Expanded deterministic fleet from 36 to 50 vessels (`VESSEL_COUNT = 50`) across realistic maritime classes: 7 tankers, 16 cargo, 8 container, 14 fishing, 5 patrol craft, 5 anchored/roadstead ships.
+  - Added new commercial routes (Karachi-Mumbai deep lane, Gulf approach, coastal Saurashtra, and offshore connectors) and calibrated fishing/patrol distributions.
+- **Eliminated Tight Circular Trajectories (`src/simulation/routeBuilder.ts` & `src/simulation/maritimeNetwork.ts`):**
+  - Reworked patrol craft movement: replaced tight 1.8 km square loops with elongated 20–35 km channel fairway sweeps (`kandla`, `mundra`, `porbandar`, `okha`, `diu`), giving realistic coast guard patrol pacing without unnatural circling.
+  - Reworked fishing grounds: replaced tight multi-vertex loops with realistic elongated 4–8 km trawling sweeps along regional fishing banks.
+  - Maintained stationary holds for anchored roadstead vessels with realistic micro-drifts on the hook.
+- **Traffic vs. Trail Visibility Separation & Refinement (`src/store/mapStore.ts`, `src/map/layers/useDeckLayers.ts`, `src/map/layers/trailLayer.ts`, `src/simulation/trailGenerator.ts`):**
+  - Set `vesselTrails` default layer visibility to `false` in `DEFAULT_LAYER_VISIBILITY` so normal monitoring presents clean, crisp traffic without an overwhelming yarn ball of 50 paths.
+  - Made trail querying selective: only fetches and renders trails when the layer is toggled on OR when a specific vessel is selected/clicked.
+  - Refined trail sampling to 32 points spanning the recent 4–5 hours of voyage history with subtle 1.5px semi-transparent lines, reserving prominent 3.5px golden highlights for the active selected vessel.
+- **Verification:**
+  - `npm run build` (`tsc -b && vite build`) clean (0 errors).
+  - `npm run lint` clean (0 errors).
+  - `scripts/verify-fleet.mjs`: All 50 vessels navigable and off land; zero trail segments on land; all 50 vessels deterministic across generations; and `vsl-001` (Ocean Guardian) retains top candidate match score (0.965) with a 0.303 margin over second place.
+  - `scripts/verify-vessel-animation.mjs`: 50 vessels load at $t=0$; play advances active vessels smoothly; pause freezes all 50 vessels bit-identically; resume continues seamlessly; reset restores exact starting positions; 50% scrub is 100% deterministic; and `vsl-001` proceeds along its outbound westbound channel.
+
 
 
 
