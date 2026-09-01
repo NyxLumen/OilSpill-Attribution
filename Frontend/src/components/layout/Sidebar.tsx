@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Map as MapIcon,
   AlertTriangle,
@@ -14,7 +13,7 @@ import {
   SquareDashed,
   Route,
 } from 'lucide-react';
-import { useUIStore, useMapStore } from '@/store';
+import { useUIStore, useMapStore, useIncidentStore } from '@/store';
 import type { MapLayerId } from '@/types/map';
 import { cn } from '@/lib/utils';
 
@@ -47,18 +46,25 @@ const LAYERS: Array<{ id: MapLayerId; label: string; icon: typeof Ship }> = [
  * OceanWatch Floating Left Sidebar
  *
  * Provides two discrete floating cards:
- * 1. Top Card: Primary Navigation with active state highlights
+ * 1. Top Card: Primary Navigation fully synchronized with global UI store
  * 2. Bottom Card: Maritime Layers toggle controls
  */
 export function Sidebar() {
   const { activePanel, setActivePanel } = useUIStore();
   const { layerVisibility, toggleLayer } = useMapStore();
-  const [activeNav, setActiveNav] = useState<string>('map');
+  const selectVessel = useIncidentStore((state) => state.selectVessel);
+
+  // Sync active navigation tab with activePanel
+  const activeNavId = activePanel === null ? 'map' : activePanel;
 
   const handleNavClick = (id: string) => {
-    setActiveNav(id);
-    if (id === 'incidents' || id === 'vessels') {
-      setActivePanel(activePanel === id ? null : (id as 'incidents' | 'vessels'));
+    if (id === 'map') {
+      setActivePanel(null);
+    } else if (id === 'incidents') {
+      setActivePanel('incidents');
+    } else if (id === 'vessels') {
+      setActivePanel('vessels');
+      // If no vessel selected, show fleet list
     } else {
       setActivePanel(null);
     }
@@ -71,7 +77,7 @@ export function Sidebar() {
         <div className="space-y-1">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
-            const isActive = activeNav === item.id;
+            const isActive = activeNavId === item.id;
 
             return (
               <button

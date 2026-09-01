@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { X, Droplet, ArrowRight, Ship, Navigation, Compass, Gauge, Clock, Radio, RotateCcw } from 'lucide-react';
+import { X, Droplet, ArrowRight, Ship, Navigation, Compass, Gauge, Clock, Radio, RotateCcw, BarChart2, ShieldCheck } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useUIStore, useIncidentStore } from '@/store';
 import { useDataProvider } from '@/app/providers';
@@ -24,9 +23,7 @@ function vesselClassLabel(type: VesselType): string {
   }
 }
 
-/**
- * Format timestamp to e.g. "14 Aug 2026, 14:32 UTC"
- */
+/** Format timestamp to e.g. "14 Aug 2026, 14:32 UTC" */
 function formatIncidentDate(isoString: string): string {
   try {
     const d = new Date(isoString);
@@ -48,9 +45,11 @@ function formatIncidentDate(isoString: string): string {
 function OilSpillCard({
   incident,
   onTraceSource,
+  onViewTimeline,
 }: {
   incident: { id: string; detectedAt: string; areaKm2: number; confidence: number };
   onTraceSource: () => void;
+  onViewTimeline: () => void;
 }) {
   const { setActivePanel } = useUIStore();
 
@@ -121,7 +120,7 @@ function OilSpillCard({
       {/* Secondary Action */}
       <button
         type="button"
-        onClick={() => setActivePanel('incidents')}
+        onClick={onViewTimeline}
         className="w-full flex items-center justify-between text-xs font-semibold text-ocean-600 hover:text-ocean-900 pt-1 group transition-smooth"
       >
         <span>View Timeline</span>
@@ -170,7 +169,6 @@ function TopCandidateCard({
           alt={vessel.name}
           className="w-full h-full object-cover object-center group-hover:scale-105 transition-all duration-500"
           onError={(e) => {
-            // Fallback gracefully if image unavailable
             (e.target as HTMLElement).style.display = 'none';
           }}
         />
@@ -229,7 +227,7 @@ function VesselTelemetryDrawer({
           type="button"
           onClick={onClose}
           className="p-1.5 text-ocean-400 hover:text-ocean-700 hover:bg-ocean-100/60 rounded-lg transition-smooth"
-          title="Close telemetry"
+          title="Back to fleet / close"
         >
           <RotateCcw className="w-4 h-4" />
         </button>
@@ -293,17 +291,177 @@ function VesselTelemetryDrawer({
 }
 
 /**
+ * Vessel Fleet List Panel
+ */
+function VesselFleetList({
+  onSelectVessel,
+  onClose,
+}: {
+  onSelectVessel: (vesselId: string) => void;
+  onClose: () => void;
+}) {
+  const dataProvider = useDataProvider();
+  const { data: vessels = [] } = useQuery({
+    queryKey: ['vessels'],
+    queryFn: () => dataProvider.getVessels(),
+  });
+
+  return (
+    <div className="w-88 max-h-[calc(100vh-10rem)] rounded-2xl bg-white/95 backdrop-blur-md border border-white/80 shadow-[0_12px_32px_rgba(0,0,0,0.08),0_2px_6px_rgba(0,0,0,0.04)] p-5 text-ocean-900 flex flex-col transition-smooth">
+      <div className="flex items-center justify-between pb-3 border-b border-ocean-100 mb-3">
+        <div className="flex items-center gap-2">
+          <Ship className="w-4 h-4 text-blue-accent" />
+          <h3 className="text-xs font-bold text-ocean-900 uppercase tracking-wider">
+            Active Fleet ({vessels.length})
+          </h3>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-1 rounded-md text-ocean-400 hover:text-ocean-700 transition-smooth"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+        {vessels.map((v) => {
+          const color = VESSEL_TYPE_COLORS[v.type] || VESSEL_TYPE_COLORS.other;
+          return (
+            <button
+              key={v.id}
+              type="button"
+              onClick={() => onSelectVessel(v.id)}
+              className="w-full flex items-center justify-between p-3 rounded-xl bg-surface-white border border-border-subtle hover:border-blue-accent/40 hover:bg-ocean-50/70 transition-smooth text-left shadow-xs group"
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center border shrink-0"
+                  style={{ backgroundColor: `${color}15`, borderColor: `${color}30` }}
+                >
+                  <Ship className="w-4 h-4" style={{ color }} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-ocean-900 truncate group-hover:text-blue-accent transition-smooth">
+                    {v.name}
+                  </div>
+                  <div className="text-[11px] text-ocean-500 capitalize truncate">
+                    {v.type} • {v.speed.toFixed(1)} kn
+                  </div>
+                </div>
+              </div>
+              <ArrowRight className="w-3.5 h-3.5 text-ocean-400 group-hover:text-blue-accent group-hover:translate-x-0.5 transition-smooth shrink-0" />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Incident Investigation & Attribution Card
+ */
+function IncidentInvestigationPanel({
+  incident,
+  candidates,
+  onSelectCandidate,
+  onClose,
+}: {
+  incident: { id: string; detectedAt: string; areaKm2: number; confidence: number };
+  candidates: Array<{ vesselId: string; matchScore: number; reason?: string }>;
+  onSelectCandidate: (vesselId: string) => void;
+  onClose: () => void;
+}) {
+  const dataProvider = useDataProvider();
+  const { data: vessels = [] } = useQuery({
+    queryKey: ['vessels'],
+    queryFn: () => dataProvider.getVessels(),
+  });
+
+  return (
+    <div className="w-88 max-h-[calc(100vh-10rem)] rounded-2xl bg-white/95 backdrop-blur-md border border-white/80 shadow-[0_12px_32px_rgba(0,0,0,0.08),0_2px_6px_rgba(0,0,0,0.04)] p-5 text-ocean-900 flex flex-col transition-smooth">
+      <div className="flex items-center justify-between pb-3 border-b border-ocean-100 mb-3">
+        <div className="flex items-center gap-2">
+          <Droplet className="w-4 h-4 text-red-alert fill-current" />
+          <h3 className="text-xs font-bold text-ocean-900 uppercase tracking-wider">
+            Incident #{incident.id} Attribution
+          </h3>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-1 rounded-md text-ocean-400 hover:text-ocean-700 transition-smooth"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="p-3 rounded-xl bg-ocean-50/70 border border-border-subtle mb-4">
+        <div className="flex justify-between text-xs mb-1">
+          <span className="text-ocean-500">Detection Extent:</span>
+          <span className="font-bold text-ocean-900">{incident.areaKm2.toFixed(1)} km²</span>
+        </div>
+        <div className="flex justify-between text-xs">
+          <span className="text-ocean-500">Confidence:</span>
+          <span className="font-bold text-ocean-900">{(incident.confidence * 100).toFixed(1)}%</span>
+        </div>
+      </div>
+
+      <h4 className="text-[11px] font-bold text-ocean-500 uppercase tracking-wider mb-2">
+        Ranked Suspect Vessels ({candidates.length})
+      </h4>
+
+      <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
+        {candidates.map((cand, idx) => {
+          const v = vessels.find((v) => v.id === cand.vesselId);
+          const scorePercent = Math.round(cand.matchScore * 100);
+
+          return (
+            <div
+              key={cand.vesselId}
+              className="p-3 rounded-xl bg-surface-white border border-border-subtle shadow-xs"
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-bold text-ocean-900">
+                  #{idx + 1} {v ? v.name : cand.vesselId}
+                </span>
+                <span className="text-xs font-extrabold text-blue-accent">
+                  {scorePercent}% Match
+                </span>
+              </div>
+              <p className="text-[11px] text-ocean-500 mb-2">
+                {v ? `${vesselClassLabel(v.type)} • IMO ${v.imo}` : 'Vessel'}
+              </p>
+              <button
+                type="button"
+                onClick={() => onSelectCandidate(cand.vesselId)}
+                className="w-full py-1.5 rounded-lg bg-blue-accent/10 hover:bg-blue-accent text-blue-accent hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-smooth"
+              >
+                <span>Inspect Candidate Trail</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
  * OceanWatch Right Intelligence Stack
  *
- * Renders the dual floating cards matching reference.png:
- * 1. Top Card: Oil Spill Detection Intelligence (Area, Confidence, TRACE SOURCE CTA)
- * 2. Bottom Card: Top Candidate Vessel with photographic ship preview
+ * Dynamically reacts to user interactions, sidebar selection, and map picking:
+ * 1. Default Map View (activePanel === null): Dual Reference Cards (Oil Spill + Top Candidate)
+ * 2. activePanel === 'vessels': Vessel Telemetry (if vessel selected) OR Active Fleet Directory
+ * 3. activePanel === 'incidents': Incident Investigation & Ranked Attribution Breakdown
  */
 export function DetailPanel() {
   const dataProvider = useDataProvider();
+  const { activePanel, setActivePanel, closePanel } = useUIStore();
   const selectedVesselId = useIncidentStore((state) => state.selectedVesselId);
   const selectVessel = useIncidentStore((state) => state.selectVessel);
-  const [showTelemetry, setShowTelemetry] = useState(false);
 
   const { data: incidents = [] } = useQuery({
     queryKey: ['incidents'],
@@ -343,34 +501,63 @@ export function DetailPanel() {
     position: { lat: 18.42, lng: 68.17 },
   };
 
-  const selectedVessel = selectedVesselId ? displayVessel : null;
+  const { data: vessels = [] } = useQuery({
+    queryKey: ['vessels'],
+    queryFn: () => dataProvider.getVessels(),
+  });
+
+  const selectedVessel = selectedVesselId
+    ? vessels.find((v) => v.id === selectedVesselId) || displayVessel
+    : null;
 
   const handleTraceSource = () => {
     selectVessel(displayVessel.id);
+    setActivePanel('incidents');
   };
 
   const handleViewDetails = () => {
     selectVessel(displayVessel.id);
-    setShowTelemetry(true);
+    setActivePanel('vessels');
+  };
+
+  const handleSelectVesselFromList = (vesselId: string) => {
+    selectVessel(vesselId);
   };
 
   return (
     <div className="absolute right-6 top-24 z-20 flex flex-col gap-4">
-      {/* If deep telemetry is triggered for selected vessel */}
-      {showTelemetry && selectedVessel ? (
-        <VesselTelemetryDrawer
-          vessel={selectedVessel}
-          onClose={() => {
-            setShowTelemetry(false);
-            selectVessel(null);
+      {/* 1. Vessels View */}
+      {activePanel === 'vessels' ? (
+        selectedVessel ? (
+          <VesselTelemetryDrawer
+            vessel={selectedVessel}
+            onClose={() => selectVessel(null)}
+          />
+        ) : (
+          <VesselFleetList
+            onSelectVessel={handleSelectVesselFromList}
+            onClose={() => closePanel()}
+          />
+        )
+      ) : activePanel === 'incidents' ? (
+        /* 2. Incidents Investigation View */
+        <IncidentInvestigationPanel
+          incident={incident}
+          candidates={candidates.length > 0 ? candidates : [topCandidate]}
+          onSelectCandidate={(vesselId) => {
+            selectVessel(vesselId);
+            setActivePanel('vessels');
           }}
+          onClose={() => closePanel()}
         />
       ) : (
+        /* 3. Default Overview: Reference Dual Cards */
         <>
-          {/* Top Card: Oil Spill Detection */}
-          <OilSpillCard incident={incident} onTraceSource={handleTraceSource} />
-
-          {/* Bottom Card: Top Candidate with Ship Image Preview */}
+          <OilSpillCard
+            incident={incident}
+            onTraceSource={handleTraceSource}
+            onViewTimeline={() => setActivePanel('incidents')}
+          />
           <TopCandidateCard
             candidate={topCandidate}
             vessel={displayVessel}
