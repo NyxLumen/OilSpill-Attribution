@@ -13,8 +13,10 @@ function getDeckTooltip(info: PickingInfo) {
     return null;
   }
 
+  const layerId = info.layer?.id || '';
+
   // Vessel hover tooltip
-  if (info.layer?.id === 'vessels-2d-layer') {
+  if (layerId === 'vessels-2d-layer') {
     const v = info.object as Vessel;
     return {
       html: `
@@ -35,10 +37,39 @@ function getDeckTooltip(info: PickingInfo) {
     };
   }
 
-  // Spill hover tooltip
-  if (info.layer?.id === 'spill-polygon-layer' || info.layer?.id === 'spill-origin-layer') {
+  // Estimated Release Point Marker hover tooltip
+  if (layerId.startsWith('spill-origin-marker')) {
+    const data = info.object as { incident?: OilSpillIncident };
+    const inc = data.incident;
+    const geom = inc?.geometry as
+      | { drift?: { speedKmH: number; bearingDeg: number } }
+      | undefined;
+    const drift = geom?.drift
+      ? `<span>Drift: <strong style="color: #f1f5f9;">${geom.drift.speedKmH.toFixed(1)} km/h @ ${geom.drift.bearingDeg}°</strong></span>`
+      : '';
+    return {
+      html: `
+        <div style="padding: 8px 12px; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: 12px; line-height: 1.35; color: #f8fafc; background: rgba(15, 23, 42, 0.94); border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.5); box-shadow: 0 8px 24px rgba(0,0,0,0.35); backdrop-filter: blur(8px);">
+          <div style="font-weight: 700; color: #fbbf24; font-size: 13px; margin-bottom: 2px;">ESTIMATED RELEASE POINT</div>
+          <div style="color: #cbd5e1; font-size: 11px; font-weight: 500;">Back-tracked from SAR detection along net drift</div>
+          <div style="margin-top: 6px; padding-top: 4px; border-top: 1px solid rgba(245, 158, 11, 0.25); display: flex; gap: 10px; color: #94a3b8; font-size: 11px;">
+            <span>Release Window: <strong style="color: #f1f5f9;">06:12–07:27Z</strong></span>
+            ${drift}
+          </div>
+        </div>
+      `,
+      style: {
+        backgroundColor: 'transparent',
+        boxShadow: 'none',
+        padding: '0',
+      },
+    };
+  }
+
+  // Spill body / Detection Point hover tooltip
+  if (layerId === 'spill-polygon-layer' || layerId === 'spill-detection-point-layer') {
     const inc = (info.object.incident ?? info.object) as OilSpillIncident;
-    const isOrigin = info.layer?.id === 'spill-origin-layer';
+    const isDetectionPoint = layerId === 'spill-detection-point-layer';
     const geom = inc.geometry as
       | { drift?: { speedKmH: number; bearingDeg: number } }
       | undefined;
@@ -48,7 +79,7 @@ function getDeckTooltip(info: PickingInfo) {
     return {
       html: `
         <div style="padding: 8px 12px; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: 12px; line-height: 1.35; color: #f8fafc; background: rgba(15, 23, 42, 0.94); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.45); box-shadow: 0 8px 24px rgba(0,0,0,0.35); backdrop-filter: blur(8px);">
-          <div style="font-weight: 700; color: #f87171; font-size: 13px; margin-bottom: 2px;">${isOrigin ? 'ESTIMATED RELEASE POINT' : 'OIL SPILL DETECTED'}</div>
+          <div style="font-weight: 700; color: #f87171; font-size: 13px; margin-bottom: 2px;">${isDetectionPoint ? 'SAR DETECTION POINT' : 'OIL SPILL DETECTED'}</div>
           <div style="color: #cbd5e1; font-size: 11px; font-weight: 500;">Incident: <strong style="color: #f1f5f9;">${inc.id}</strong></div>
           <div style="margin-top: 6px; padding-top: 4px; border-top: 1px solid rgba(239, 68, 68, 0.25); display: flex; gap: 10px; color: #94a3b8; font-size: 11px;">
             <span>Area: <strong style="color: #f1f5f9;">${inc.areaKm2} km²</strong></span>

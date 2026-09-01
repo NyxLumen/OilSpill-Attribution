@@ -850,6 +850,30 @@ Turns the Phase 4.8 calibration data into concrete corrections to the synthetic 
   - `scripts/verify-scenario-controller.mjs`, `scripts/verify-determinism.mjs`, `scripts/verify-fleet.mjs`, `scripts/verify-vessel-animation.mjs`: All 5 automated suites passed.
   - **Manual browser visual verification**: Verified on `http://localhost:5173` across initial baseline $\to$ play past 07:42Z $\to$ pause $\to$ scrub to 08:35Z (drift & growth) $\to$ scrub back to 07:20Z (disappearance) $\to$ reset.
 
+### Task 4 — Environmental Drift Analysis + AIS Correlation
+
+- **Environmental Drift Visualization (`src/map/layers/environmentLayer.ts`):**
+  - Created lightweight deck.gl vector field layers for Ocean Currents ($\approx 0.8\text{ kn @ } 268^\circ\text{ W}$) and Wind Flow ($\approx 7.2\text{ kn @ } 92^\circ\text{ ENE}$) across the Arabian Sea / Gulf of Kutch.
+  - High-contrast Net Surface Drift vector ($3.92\text{ km/h @ } 264^\circ\text{ WSW}$) acting directly on the spill centroid and estimated origin.
+  - All vector fields derive deterministically from `environmentAt(simTimeMs)` and `driftVectorAt(simTimeMs)`.
+- **Progressive Spill Movement & Predicted Drift Corridor (`src/map/layers/spillLayer.ts`):**
+  - **Strict narrative progression**: At `07:42Z` (`SPILL DETECTED`), only the observed slick polygon and SAR detection point are visible.
+  - At `08:00Z` (`CORRELATING`), environmental drift begins: reveals the amber back-track trajectory line connecting detection to the Estimated Release Point ($22.517^\circ\text{N}, 69.585^\circ\text{E}$), the distinct Estimated Release Point marker, and the forward predicted drift forecast corridor ($264^\circ\text{ WSW}$ down the Gulf).
+- **Historical AIS Correlation & Restrained Visual Hierarchy (`src/map/layers/vesselLayer.ts`, `src/map/layers/trailLayer.ts`, `src/map/layers/useDeckLayers.ts`):**
+  - Spatiotemporally correlates 50 fleet vessel tracks against the $06:12\text{Z} \to 07:27\text{Z}$ release window and drift corridor.
+  - During correlation, candidate vessels receive subtle cyan correlation indicator halos and highlighted candidate trails, while non-candidate traffic is visually subdued to maintain clean map hierarchy.
+- **Investigation UI Progression (`src/components/layout/DetailPanel.tsx`):**
+  - Replaces premature attribution conclusion cards with an active investigation panel:
+    - At `08:00Z` (`CORRELATING`): displays `AIS CORRELATION IN PROGRESS`, `50 VESSELS ANALYZED`, `4 RELEVANT CANDIDATES`, `RELEASE WINDOW: 06:12–07:27 UTC`, Net Drift telemetry, and compact candidate relevance items with `TEMPORAL MATCH`, `ROUTE MATCH`, and `DISTANCE MATCH` badges.
+    - At `08:41Z` (`ATTRIBUTION READY`): displays `AIS CORRELATION COMPLETE` with candidate relevance summary, preparing for Task 5 attribution without premature verdict.
+- **Verification:**
+  - `npm run build` (`tsc -b && vite build`): 0 errors.
+  - `npm run lint`: 0 errors.
+  - `scripts/verify-drift-correlation.mjs`: All checks passed (environmental drift vectors, progressive disclosure gates, candidate ranking, scrubbing determinism).
+  - `scripts/verify-browser-cdp.mjs`: Automated headless CDP test suite passed across all 5 timeline progression checkpoints with pixel screenshots captured.
+  - Full suite passed: `verify-scenario-controller.mjs`, `verify-determinism.mjs`, `verify-fleet.mjs`, `verify-vessel-animation.mjs`, `verify-spill-detection.mjs`, `verify-drift-correlation.mjs`, `verify-browser-cdp.mjs`.
+
+
 
 
 

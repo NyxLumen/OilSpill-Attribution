@@ -5,17 +5,20 @@ import type { VesselTrail } from '@/types/vessel';
 export interface TrailLayerOptions {
   trails: VesselTrail[];
   selectedVesselId: string | null;
+  candidateVesselIds?: string[];
+  isCorrelating?: boolean;
 }
 
 /**
  * Creates deck.gl layers for rendering historical vessel trails.
  *
- * Trails are rendered using PathLayer with screen-space minimum pixel width
- * so they remain readable at all operational zoom levels without becoming hairlines.
- * The active selected vessel's trail is highlighted with high contrast.
+ * Provides clear visual hierarchy:
+ * 1. Active selected vessel: prominent golden highlight (3.5px)
+ * 2. Correlated candidate vessels: cyan correlation highlight (2.2px)
+ * 3. General background traffic: restrained translucent blue (1.2px)
  */
 export function createTrailLayers(options: TrailLayerOptions): Layer[] {
-  const { trails, selectedVesselId } = options;
+  const { trails, selectedVesselId, candidateVesselIds = [], isCorrelating = false } = options;
 
   const layers: Layer[] = [];
 
@@ -23,33 +26,42 @@ export function createTrailLayers(options: TrailLayerOptions): Layer[] {
     return layers;
   }
 
-  // Filter out any trails with fewer than 2 points
   const validTrails = trails.filter((t) => t.points && t.points.length >= 2);
 
   if (validTrails.length === 0) {
     return layers;
   }
 
+  const candidateSet = new Set(candidateVesselIds);
+
   layers.push(
     new PathLayer<VesselTrail>({
       id: 'vessel-trails-layer',
       data: validTrails,
-      pickable: false, // Trails remain subordinate to vessel icons for picking
+      pickable: false,
       widthScale: 1,
-      widthMinPixels: 1.5,
+      widthMinPixels: 1.2,
       widthMaxPixels: 5,
       capRounded: true,
       jointRounded: true,
       getPath: (d: VesselTrail) => d.points.map((p): [number, number] => [p.lng, p.lat]),
       getColor: (d) => {
-        const isSelected = d.vesselId === selectedVesselId;
-        // Selected trail: bright golden accent; normal background trails: subtle translucent blue
-        return isSelected ? [245, 158, 11, 235] : [59, 130, 246, 85];
+        if (d.vesselId === selectedVesselId) {
+          return [245, 158, 11, 235]; // Golden selected trail
+        }
+        if (isCorrelating && candidateSet.has(d.vesselId)) {
+          return [6, 182, 212, 190]; // Cyan candidate correlation trail
+        }
+        return [59, 130, 246, isCorrelating ? 50 : 80]; // Subdued background trail
       },
-      getWidth: (d) => (d.vesselId === selectedVesselId ? 3.5 : 1.5),
+      getWidth: (d) => {
+        if (d.vesselId === selectedVesselId) return 3.5;
+        if (isCorrelating && candidateSet.has(d.vesselId)) return 2.2;
+        return 1.2;
+      },
       updateTriggers: {
-        getColor: [selectedVesselId],
-        getWidth: [selectedVesselId],
+        getColor: [selectedVesselId, Array.from(candidateSet).join(','), isCorrelating],
+        getWidth: [selectedVesselId, Array.from(candidateSet).join(','), isCorrelating],
       },
     })
   );
