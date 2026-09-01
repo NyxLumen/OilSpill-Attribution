@@ -13,7 +13,7 @@ import {
   SquareDashed,
   Route,
 } from 'lucide-react';
-import { useUIStore, useMapStore, useIncidentStore } from '@/store';
+import { useUIStore, useMapStore } from '@/store';
 import type { MapLayerId } from '@/types/map';
 import { cn } from '@/lib/utils';
 
@@ -52,7 +52,6 @@ const LAYERS: Array<{ id: MapLayerId; label: string; icon: typeof Ship }> = [
 export function Sidebar() {
   const { activePanel, setActivePanel } = useUIStore();
   const { layerVisibility, toggleLayer } = useMapStore();
-  const selectVessel = useIncidentStore((state) => state.selectVessel);
 
   // Sync active navigation tab with activePanel
   const activeNavId = activePanel === null ? 'map' : activePanel;

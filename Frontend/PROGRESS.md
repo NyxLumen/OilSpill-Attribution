@@ -771,13 +771,31 @@ Turns the Phase 4.8 calibration data into concrete corrections to the synthetic 
 - **StatusBar:** wind/current now derived from `environmentAt(SCENARIO_START_MS)` (E/ENE wind reinforcing WSW ebb) instead of stale hard-coded values.
 - **Verification:** `verify-fleet.mjs` ALL CHECKS PASSED — 36 vessels, all routes navigable, no vessel/position/AIS/trail/spill point on land across the sampled day, fishing meanders irregular + distinct, determinism, ranking; `verify-determinism.mjs` passes; tsc/lint/build clean; browser/CDP confirms 36 vessels + trails + spill all off land, INC-2026-001 / 97% / Ocean Guardian, ACTIVE FLEET (36), E wind / W current, zero console errors.
 
-### Current truth
+## 2026-09-01
 
-- Deterministic maritime traffic simulation is implemented, deterministic, and browser verified: a quality-first 36-vessel fleet constrained to real geography (no vessel on land, no trail through land, all routes navigable and validated) with realistic per-vessel behaviour, AIS-like observations, and traffic density calibrated against a real 8-day GFW AIS snapshot.
-- The deterministic oil-spill attribution scenario (4.3–4.6) is implemented, deterministic, and browser verified: incident INC-2026-001, organic drifted spill geometry, phase state machine, fleet-derived candidate scoring, evidence, deterministic environment, and drift coherence.
-- Mock mode is live: 36 moving vessels with coherent historical trails, a drifting organic spill, and ranked candidate attribution, all served through the provider architecture.
-- Timeline generation and the end-to-end demo scenario (Trace Source UI, Timeline) remain for later sub-phases; both are explicitly out of scope for 4.9.
-- Vessel LOD/3D (Phase 5), investigation (Phase 6), timeline/search (Phase 7), and FastAPI integration (Phase 8) remain NOT STARTED.
+### Task 1 — Demo Scenario Controller (Authoritative Simulation Clock)
+
+- **Authoritative Scenario Controller (`src/simulation/scenarioController.ts`):**
+  - Created standalone, React-independent `ScenarioController` class and singleton `scenarioController`.
+  - Timeline bounds established: `SCENARIO_TIMELINE_START_MS` (07:20:00Z, normal baseline patrol) $\to$ `SCENARIO_TIMELINE_END_MS` (09:10:00Z, attribution ready), duration 110 simulated minutes (6,600,000 ms).
+  - Configurable playback speed: default 120x (1 real second = 2 simulated minutes), completing the scenario in ~55 real seconds.
+  - Supports Play, Pause, Resume, Reset, Seek (`setSimTimeMs`, `setProgress`), and Playback Speed (`setPlaybackSpeed`).
+  - Authoritative properties: `isPlaying`, `simTimeMs`, `progress` ($0..1$), `phase` (driven by `scenarioPhaseAt()`), `playbackSpeed`, `formattedTime`.
+  - Re-anchored `SimulationEngine.getSimTimeMs()` and `SimulationEngine.reset()` directly to `scenarioController` — strictly **ONE** authoritative clock across the entire frontend.
+- **Zustand Scenario Store (`src/store/scenarioStore.ts`):**
+  - Reactive store `useScenarioStore` subscribing to `scenarioController` snapshots.
+  - Exposes state (`isPlaying`, `simTimeMs`, `progress`, `phase`, `playbackSpeed`) and actions (`play`, `pause`, `togglePlay`, `resume`, `reset`, `setSimTime`, `setProgress`, `setSpeed`).
+- **UI Integration (`Header.tsx` & `StatusBar.tsx`):**
+  - Header displays authoritative UTC timestamp derived from `simTimeMs`.
+  - Integrated minimalist, elegant playback controls into the header capsule: Play/Pause button, Reset button, interactive micro progress slider, LIVE / PAUSED status indicator, and dynamic operational phase badge (`NORMAL`, `SPILL DETECTED`, `CORRELATING`, `ATTRIBUTION READY`).
+  - StatusBar connects environmental telemetry dynamically to `simTimeMs`.
+  - Cleaned unused TS declarations in `DetailPanel.tsx` and `Sidebar.tsx`.
+- **Verification:**
+  - `npm run build` (`tsc -b && vite build`) passes with 0 errors.
+  - `npm run lint` passes with 0 errors.
+  - `scripts/verify-scenario-controller.mjs`: Play advances time, Pause freezes time, Resume continues from paused epoch, Reset returns to exact start (07:20:00Z), all 8 phase checkpoints verify correct phase transitions, 50% scrub lands on 08:15:00Z (`correlating`), and `SimulationEngine` synchronizes identically with `scenarioController`.
+  - `scripts/verify-determinism.mjs`: All checks passed.
+
 
 
 

@@ -1,4 +1,4 @@
-import { X, Droplet, ArrowRight, Ship, Navigation, Compass, Gauge, Clock, Radio, RotateCcw, BarChart2, ShieldCheck } from 'lucide-react';
+import { X, Droplet, ArrowRight, Ship, Navigation, Compass, Gauge, Clock, Radio, RotateCcw } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useUIStore, useIncidentStore } from '@/store';
 import { useDataProvider } from '@/app/providers';

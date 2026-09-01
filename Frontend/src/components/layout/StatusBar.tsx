@@ -1,6 +1,6 @@
 import { Ship, Droplet, Bell, MapPin, Wind, Waves } from 'lucide-react';
-import { useMapStore } from '@/store';
-import { SCENARIO_START_MS, environmentAt } from '@/simulation';
+import { useMapStore, useScenarioStore } from '@/store';
+import { environmentAt } from '@/simulation';
 
 const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
 const MS_TO_KN = 1.94384;
@@ -17,7 +17,8 @@ function compass(dir: number): string {
  */
 export function StatusBar() {
   const { viewport } = useMapStore();
-  const env = environmentAt(SCENARIO_START_MS);
+  const simTimeMs = useScenarioStore((state) => state.simTimeMs);
+  const env = environmentAt(simTimeMs);
 
   const latStr = `${Math.abs(viewport.latitude).toFixed(2)}° ${viewport.latitude >= 0 ? 'N' : 'S'}`;
   const lngStr = `${Math.abs(viewport.longitude).toFixed(2)}° ${viewport.longitude >= 0 ? 'E' : 'W'}`;
