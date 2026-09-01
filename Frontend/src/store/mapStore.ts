@@ -7,7 +7,7 @@ import type { LayerVisibility, MapLayerId, MapViewport, TerrainMode } from '../t
  */
 const DEFAULT_LAYER_VISIBILITY: LayerVisibility = {
   vessels: true,
-  vesselTrails: true,
+  vesselTrails: false,
   oilSpills: true,
   oceanCurrents: false,
   windFlow: false,

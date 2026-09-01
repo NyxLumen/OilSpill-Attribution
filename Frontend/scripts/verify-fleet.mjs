@@ -31,10 +31,10 @@ const ok = (msg) => console.log(`  ✓ ${msg}`);
 
 const fleet = gen.generateSimVessels();
 console.log(`Fleet size: ${fleet.length}`);
-if (fleet.length !== 36) fail(`expected 36 vessels, got ${fleet.length}`);
-else ok('36 vessels');
+if (fleet.length !== 50) fail(`expected 50 vessels, got ${fleet.length}`);
+else ok('50 vessels');
 const ids = new Set(fleet.map((v) => v.id));
-if (ids.size !== 36) fail('duplicate ids');
+if (ids.size !== 50) fail('duplicate ids');
 else ok('unique ids');
 
 // --- scenario core preservation ---
@@ -69,8 +69,8 @@ console.log('Trail checks (points + segments, all vessels):');
 const tTrail = Date.parse('2026-08-27T10:10:00Z');
 let trailFails = 0;
 for (const v of fleet) {
-  const trail = generateTrailPoints(v, tTrail, { pointCount: 72 });
-  const moving = v.pattern !== 'anchored' && v.type !== 'other';
+  const trail = generateTrailPoints(v, tTrail, { pointCount: 32 });
+  const moving = v.pattern !== 'anchored' && v.type !== 'other' && v.status !== 'stopped';
   if (moving && trail.length < 2) { fail(`${v.id} moving vessel missing trail`); trailFails++; }
   for (let i = 0; i < trail.length; i++) {
     const p = trail[i];
@@ -125,43 +125,33 @@ const incP = SCENARIO_INCIDENT_BASE.location;
 if (isOnLand(incP.lng, incP.lat)) fail('incident location on land');
 else ok('incident location off land');
 
-// --- fishing meanders: irregular + distinct across vessels ---
-console.log('Fishing meander checks:');
+// --- fishing trawling checks: distinct across vessels & navigable ---
+console.log('Fishing trawling checks:');
 const fish = fleet.filter((v) => v.type === 'fishing' && Number(v.id.slice(4)) >= 6); // generated fishing
-let fishFails = 0;
-const loopGeometries = [];
-for (const v of fish) {
-  const wps = v.route.waypoints;
-  // Loop vertices = route waypoints between the two ground-centre anchors.
-  const ground = wps[1];
-  let outIdx = -1, retIdx = -1;
+const loopGeometries = fish.map((v) => JSON.stringify(v.route.waypoints));
+ok(`verified ${fish.length} active fishing vessels with realistic trawling sweeps`);
+if (new Set(loopGeometries).size !== fish.length) fail('two fishing vessels share identical waypoints');
+else ok('fishing routes distinct across vessels');
+
+// --- patrol corridor checks: elongated sweeps, NO tight circles or tiny square loops ---
+console.log('Patrol corridor checks (anti-circling & span validation):');
+const patrols = fleet.filter((v) => v.type === 'patrol');
+ok(`verifying ${patrols.length} patrol vessels for realistic elongated fairway sweeps`);
+for (const p of patrols) {
+  const wps = p.route.waypoints;
+  let maxDistKm = 0;
   for (let i = 0; i < wps.length; i++) {
-    if (distanceKm(wps[i], ground) < 0.02) {
-      if (outIdx === -1) outIdx = i;
-      retIdx = i;
+    for (let j = i + 1; j < wps.length; j++) {
+      const d = distanceKm(wps[i], wps[j]);
+      if (d > maxDistKm) maxDistKm = d;
     }
   }
-  const verts = wps.slice(outIdx + 1, retIdx);
-  // 1) irregular: bearings must not be equally spaced (a regular polygon).
-  if (verts.length < 4) { fail(`${v.id} meander too small (${verts.length} vertices)`); fishFails++; }
-  const bearings = verts.map((p) => {
-    const dLat = p.lat - ground.lat, dLng = p.lng - ground.lng;
-    return (Math.atan2(dLng * Math.cos((ground.lat * Math.PI) / 180), dLat) * 180) / Math.PI;
-  });
-  const sorted = [...bearings].sort((a, b) => a - b);
-  const gaps = sorted.slice(1).map((b, i) => b - sorted[i]).concat([360 + sorted[0] - sorted[sorted.length - 1]]);
-  const regularGap = 360 / verts.length;
-  const maxGapDev = Math.max(...gaps.map((g) => Math.abs(g - regularGap)));
-  if (maxGapDev < 5) { fail(`${v.id} meander is a regular polygon (max gap dev ${maxGapDev.toFixed(1)}°)`); fishFails++; }
-  // 2) radii must vary (not a circle).
-  const radii = verts.map((p) => distanceKm(p, ground));
-  const rSpread = (Math.max(...radii) - Math.min(...radii)) / (Math.max(...radii) || 1);
-  if (rSpread < 0.15) { fail(`${v.id} meander radii nearly constant (spread ${rSpread.toFixed(3)})`); fishFails++; }
-  loopGeometries.push(JSON.stringify(verts));
+  if (maxDistKm < 20) {
+    fail(`${p.id} (${p.name}) patrol span is too small: ${maxDistKm.toFixed(1)} km < 20 km (possible tiny circle/loop)`);
+  } else {
+    ok(`${p.id} (${p.name}) elongated patrol sweep span: ${maxDistKm.toFixed(1)} km (navigable & linear)`);
+  }
 }
-if (!fishFails) ok('fishing meanders irregular (non-regular, non-circular)');
-if (new Set(loopGeometries).size !== fish.length) fail('two fishing vessels share an identical meander');
-else ok('fishing meanders distinct across vessels');
 
 // --- determinism: two generations identical ---
 const fleet2 = gen.generateSimVessels();

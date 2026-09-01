@@ -99,25 +99,23 @@ Phase 10  Final Polish / SIH Demo           NOT STARTED
 - [x] Responsive panel behavior
 - [x] Build verification
 
-## Phase 1.2 — Visual Direction Pass
+## Phase 1.2 — Visual Direction & Reference Alignment Pass
 
-**Status: COMPLETE AS DIRECTION PASS**
+**Status: COMPLETE (Aligned with `reference.png`)**
 
+- [x] Full-bleed map canvas (`min-h-[100dvh]` with open overlay layout)
+- [x] Floating header islands (3-wave logo, standalone search pill, live UTC timestamp + pulsing LIVE status, notification bell)
+- [x] Left navigation card (active blue capsule states) & Layers card (small-caps tracked header, layer icons, eye toggles)
+- [x] Dual right intelligence stack (Oil Spill Detected card with solid navy `TRACE SOURCE` CTA + Top Candidate card with photographic ship asset preview)
+- [x] 2-row multi-column floating status bar (Metric on top, uppercase label underneath, hairline dividers)
+- [x] Floating circular bottom-right map controls (Orientation compass, vertical zoom pill, 3D toggle)
+- [x] Maritime ocean water palette styling override
 - [x] Light maritime palette
-- [x] Map-first composition
-- [x] White/translucent floating panels
-- [x] Reference-inspired header/search
-- [x] Navigation/layer panels
-- [x] Incident intelligence card
-- [x] Candidate vessel card
-- [x] Floating telemetry strip
-- [x] Floating map controls
+- [x] White/translucent floating glass panels with subtle border highlights
 - [x] Deep navy typography
-- [x] Blue accent states
+- [x] Blue/cyan accent states
 - [x] Green LIVE state
 - [x] Warning/critical states
-
-**Visual note:** The visual system is intentionally not frozen. Final typography, spacing, density, panel placement, map contrast, motion, and interaction polish will be refined after real map/data layers exist.
 
 ---
 
@@ -773,13 +771,111 @@ Turns the Phase 4.8 calibration data into concrete corrections to the synthetic 
 - **StatusBar:** wind/current now derived from `environmentAt(SCENARIO_START_MS)` (E/ENE wind reinforcing WSW ebb) instead of stale hard-coded values.
 - **Verification:** `verify-fleet.mjs` ALL CHECKS PASSED — 36 vessels, all routes navigable, no vessel/position/AIS/trail/spill point on land across the sampled day, fishing meanders irregular + distinct, determinism, ranking; `verify-determinism.mjs` passes; tsc/lint/build clean; browser/CDP confirms 36 vessels + trails + spill all off land, INC-2026-001 / 97% / Ocean Guardian, ACTIVE FLEET (36), E wind / W current, zero console errors.
 
-### Current truth
+## 2026-09-01
 
-- Deterministic maritime traffic simulation is implemented, deterministic, and browser verified: a quality-first 36-vessel fleet constrained to real geography (no vessel on land, no trail through land, all routes navigable and validated) with realistic per-vessel behaviour, AIS-like observations, and traffic density calibrated against a real 8-day GFW AIS snapshot.
-- The deterministic oil-spill attribution scenario (4.3–4.6) is implemented, deterministic, and browser verified: incident INC-2026-001, organic drifted spill geometry, phase state machine, fleet-derived candidate scoring, evidence, deterministic environment, and drift coherence.
-- Mock mode is live: 36 moving vessels with coherent historical trails, a drifting organic spill, and ranked candidate attribution, all served through the provider architecture.
-- Timeline generation and the end-to-end demo scenario (Trace Source UI, Timeline) remain for later sub-phases; both are explicitly out of scope for 4.9.
-- Vessel LOD/3D (Phase 5), investigation (Phase 6), timeline/search (Phase 7), and FastAPI integration (Phase 8) remain NOT STARTED.
+### Task 1 — Demo Scenario Controller (Authoritative Simulation Clock)
+
+- **Authoritative Scenario Controller (`src/simulation/scenarioController.ts`):**
+  - Created standalone, React-independent `ScenarioController` class and singleton `scenarioController`.
+  - Timeline bounds established: `SCENARIO_TIMELINE_START_MS` (07:20:00Z, normal baseline patrol) $\to$ `SCENARIO_TIMELINE_END_MS` (09:10:00Z, attribution ready), duration 110 simulated minutes (6,600,000 ms).
+  - Configurable playback speed: default 120x (1 real second = 2 simulated minutes), completing the scenario in ~55 real seconds.
+  - Supports Play, Pause, Resume, Reset, Seek (`setSimTimeMs`, `setProgress`), and Playback Speed (`setPlaybackSpeed`).
+  - Authoritative properties: `isPlaying`, `simTimeMs`, `progress` ($0..1$), `phase` (driven by `scenarioPhaseAt()`), `playbackSpeed`, `formattedTime`.
+  - Re-anchored `SimulationEngine.getSimTimeMs()` and `SimulationEngine.reset()` directly to `scenarioController` — strictly **ONE** authoritative clock across the entire frontend.
+- **Zustand Scenario Store (`src/store/scenarioStore.ts`):**
+  - Reactive store `useScenarioStore` subscribing to `scenarioController` snapshots.
+  - Exposes state (`isPlaying`, `simTimeMs`, `progress`, `phase`, `playbackSpeed`) and actions (`play`, `pause`, `togglePlay`, `resume`, `reset`, `setSimTime`, `setProgress`, `setSpeed`).
+- **UI Integration (`Header.tsx` & `StatusBar.tsx`):**
+  - Header displays authoritative UTC timestamp derived from `simTimeMs`.
+  - Integrated minimalist, elegant playback controls into the header capsule: Play/Pause button, Reset button, interactive micro progress slider, LIVE / PAUSED status indicator, and dynamic operational phase badge (`NORMAL`, `SPILL DETECTED`, `CORRELATING`, `ATTRIBUTION READY`).
+  - StatusBar connects environmental telemetry dynamically to `simTimeMs`.
+  - Cleaned unused TS declarations in `DetailPanel.tsx` and `Sidebar.tsx`.
+- **Verification:**
+  - `npm run build` (`tsc -b && vite build`) passes with 0 errors.
+  - `npm run lint` passes with 0 errors.
+  - `scripts/verify-scenario-controller.mjs`: Play advances time, Pause freezes time, Resume continues from paused epoch, Reset returns to exact start (07:20:00Z), all 8 phase checkpoints verify correct phase transitions, 50% scrub lands on 08:15:00Z (`correlating`), and `SimulationEngine` synchronizes identically with `scenarioController`.
+  - `scripts/verify-determinism.mjs`: All checks passed.
+
+### Task 2 — Vessel Animation Driven by Scenario Clock
+
+- **Deck.gl Animation & GPU Transitions (`src/map/layers/vesselLayer.ts`):**
+  - Added GPU-accelerated linear position and heading transitions (`transitions.getPosition`, `transitions.getAngle` with 150 ms linear duration) to `IconLayer` and `ScatterplotLayer`.
+  - Smooth continuous gliding between data updates without jerky discrete jumps or client-side stepping loops.
+- **Authoritative Polling & Reactive Invalidation (`src/map/layers/useDeckLayers.ts`):**
+  - Polling interval dynamically tied to `isPlaying`: 150 ms (≈6.7 Hz) when playing, disabled (`false`) when paused.
+  - Subscribed `useDeckLayers` to `scenarioController` for immediate, frame-instantaneous query invalidation on seek, scrub, reset, or pause/resume transitions.
+- **Verification:**
+  - `npm run build` (`tsc -b && vite build`) clean (0 errors).
+  - `npm run lint` clean (0 errors).
+  - `scripts/verify-vessel-animation.mjs`: All checks passed.
+
+### Task 2.5 — Maritime Traffic Realism, Trajectory Rework & 50-Vessel Density
+
+- **Fleet Expansion to 50 Vessels (`src/simulation/vesselGenerator.ts`):**
+  - Expanded deterministic fleet from 36 to 50 vessels (`VESSEL_COUNT = 50`) across realistic maritime classes: 7 tankers, 16 cargo, 8 container, 14 fishing, 5 patrol craft, 5 anchored/roadstead ships.
+  - Added new commercial routes (Karachi-Mumbai deep lane, Gulf approach, coastal Saurashtra, and offshore connectors) and calibrated fishing/patrol distributions.
+- **Eliminated Tight Circular Trajectories (`src/simulation/scenario.ts`, `src/simulation/routeBuilder.ts`, `src/simulation/maritimeNetwork.ts`):**
+  - **Coast Guard 07 (`vsl-005`)**: Replaced the 2.4 km square loop in `scenario.ts` with a **73.4 km elongated fairway sweep** along the Gulf of Kutch entrance corridor (`22.42°N, 68.85°E` ↔ `22.65°N, 69.52°E`), with gradual turns and steady 15.6 kn pacing along the deep navigation fairway.
+  - **Generated Patrol Fleet (`vsl-025`, `vsl-026`, `vsl-027`, `vsl-037`, `vsl-038`)**: Replaced closed 1.8 km square loops with **44–65 km elongated fairway corridor sweeps** across Kandla, Mundra, Porbandar, Okha, and Diu sectors.
+  - **Fishing Grounds**: Replaced tight multi-vertex loops with realistic elongated 4–8 km trawling sweeps along regional fishing banks.
+  - **Anchored Vessels**: Maintained stationary holds for anchored roadstead vessels with realistic micro-drifts on the hook.
+- **Traffic vs. Trail Visibility Separation & Refinement (`src/store/mapStore.ts`, `src/map/layers/useDeckLayers.ts`, `src/map/layers/trailLayer.ts`, `src/simulation/trailGenerator.ts`):**
+  - Set `vesselTrails` default layer visibility to `false` in `DEFAULT_LAYER_VISIBILITY` so normal monitoring presents clean, crisp traffic without an overwhelming yarn ball of 50 paths.
+  - Made trail querying selective: only fetches and renders trails when the layer is toggled on OR when a specific vessel is selected/clicked.
+  - Refined trail sampling to 32 points spanning the recent 4–5 hours of voyage history with subtle 1.5px semi-transparent lines, reserving prominent 3.5px golden highlights for the active selected vessel.
+- **Verification:**
+  - `npm run build` (`tsc -b && vite build`) clean (0 errors).
+  - `npm run lint` clean (0 errors).
+  - `scripts/verify-fleet.mjs`: All 50 vessels navigable and off land; verified all 6 patrol vessels have linear fairway spans between 44.3 km and 73.4 km with zero tight circles; all 50 vessels deterministic across generations; and `vsl-001` (Ocean Guardian) retains top candidate match score (0.965) with a 0.303 margin over second place.
+### Task 3 — Oil Spill Detection Event & Progressive Slick Evolution
+
+- **Deterministic Spill State Integration (`src/simulation/incident.ts`, `src/simulation/spillGeometry.ts`, `src/api/mockProvider.ts`):**
+  - Reused the single authoritative simulation clock (`simTimeMs`) from `ScenarioController` without creating secondary clocks or React animation loops.
+  - Phase-gated incident visibility: prior to `07:42:00Z` (`NORMAL` phase), `dataProvider.getIncidents()` returns `[]` and `spillStateAt` returns `null`.
+  - At `07:42:00Z` (`SPILL DETECTED` phase), the incident becomes active with initial extent (`6.2 km²`, confidence `85%`, status `detected`, severity `high`).
+  - As time advances into `08:00:00Z` (`CORRELATING`) and `08:41:00Z` (`ATTRIBUTION_READY`), the organic 44-vertex slick boundary expands logistically ($6.2 \to 18.6+\text{ km}²$) and drifts WSW down-channel in response to simulated wind/current vector fields in verified safe water.
+- **Deck.gl WebGL Layer Visualization (`src/map/layers/spillLayer.ts`, `src/map/layers/useDeckLayers.ts`):**
+  - Rendered the slick as a realistic dark hydrocarbon polygon fill with subtle translucency over the ocean basemap.
+  - High-visibility amber/red boundary stroke (`lineWidthMinPixels: 2`) and prominent origin/SAR detection marker (`ScatterplotLayer`).
+  - Layer reactively polls at 300 ms during playback, and invalidates frame-instantaneously on timeline scrub, seek, reset, or pause/resume.
+- **Incident DetailPanel Synchronization (`src/components/layout/DetailPanel.tsx`):**
+  - Removed static dummy fallback cards.
+  - Before detection, the right stack remains clean without incident clutter during normal fleet monitoring.
+  - At detection, dynamically displays the `OIL SPILL DETECTED` card with incident ID `INC-2026-001`, `HYDROCARBON SLICK` classification, `SAR SATELLITE (Sentinel-1A)` source, live observed area (`km²`), confidence bar (`%`), status badge, and `TRACE SOURCE` CTA.
+  - During correlation/attribution, seamlessly introduces candidate attribution cards.
+- **Verification:**
+  - `npm run build` (`tsc -b && vite build`): 0 errors.
+  - `npm run lint`: 0 errors.
+  - `scripts/verify-spill-detection.mjs`: All checks passed across pre-detection emptiness, 07:42Z emergence, logistic area growth, WSW drift, timeline scrubbing reversibility, and fleet coexistence.
+  - `scripts/verify-scenario-controller.mjs`, `scripts/verify-determinism.mjs`, `scripts/verify-fleet.mjs`, `scripts/verify-vessel-animation.mjs`: All 5 automated suites passed.
+  - **Manual browser visual verification**: Verified on `http://localhost:5173` across initial baseline $\to$ play past 07:42Z $\to$ pause $\to$ scrub to 08:35Z (drift & growth) $\to$ scrub back to 07:20Z (disappearance) $\to$ reset.
+
+### Task 4 — Environmental Drift Analysis + AIS Correlation
+
+- **Environmental Drift Visualization (`src/map/layers/environmentLayer.ts`):**
+  - Created lightweight deck.gl vector field layers for Ocean Currents ($\approx 0.8\text{ kn @ } 268^\circ\text{ W}$) and Wind Flow ($\approx 7.2\text{ kn @ } 92^\circ\text{ ENE}$) across the Arabian Sea / Gulf of Kutch.
+  - High-contrast Net Surface Drift vector ($3.92\text{ km/h @ } 264^\circ\text{ WSW}$) acting directly on the spill centroid and estimated origin.
+  - All vector fields derive deterministically from `environmentAt(simTimeMs)` and `driftVectorAt(simTimeMs)`.
+- **Progressive Spill Movement & Predicted Drift Corridor (`src/map/layers/spillLayer.ts`):**
+  - **Strict narrative progression**: At `07:42Z` (`SPILL DETECTED`), only the observed slick polygon and SAR detection point are visible.
+  - At `08:00Z` (`CORRELATING`), environmental drift begins: reveals the amber back-track trajectory line connecting detection to the Estimated Release Point ($22.517^\circ\text{N}, 69.585^\circ\text{E}$), the distinct Estimated Release Point marker, and the forward predicted drift forecast corridor ($264^\circ\text{ WSW}$ down the Gulf).
+- **Historical AIS Correlation & Restrained Visual Hierarchy (`src/map/layers/vesselLayer.ts`, `src/map/layers/trailLayer.ts`, `src/map/layers/useDeckLayers.ts`):**
+  - Spatiotemporally correlates 50 fleet vessel tracks against the $06:12\text{Z} \to 07:27\text{Z}$ release window and drift corridor.
+  - During correlation, candidate vessels receive subtle cyan correlation indicator halos and highlighted candidate trails, while non-candidate traffic is visually subdued to maintain clean map hierarchy.
+- **Investigation UI Progression (`src/components/layout/DetailPanel.tsx`):**
+  - Replaces premature attribution conclusion cards with an active investigation panel:
+    - At `08:00Z` (`CORRELATING`): displays `AIS CORRELATION IN PROGRESS`, `50 VESSELS ANALYZED`, `4 RELEVANT CANDIDATES`, `RELEASE WINDOW: 06:12–07:27 UTC`, Net Drift telemetry, and compact candidate relevance items with `TEMPORAL MATCH`, `ROUTE MATCH`, and `DISTANCE MATCH` badges.
+    - At `08:41Z` (`ATTRIBUTION READY`): displays `AIS CORRELATION COMPLETE` with candidate relevance summary, preparing for Task 5 attribution without premature verdict.
+- **Verification:**
+  - `npm run build` (`tsc -b && vite build`): 0 errors.
+  - `npm run lint`: 0 errors.
+  - `scripts/verify-drift-correlation.mjs`: All checks passed (environmental drift vectors, progressive disclosure gates, candidate ranking, scrubbing determinism).
+  - `scripts/verify-browser-cdp.mjs`: Automated headless CDP test suite passed across all 5 timeline progression checkpoints with pixel screenshots captured.
+  - Full suite passed: `verify-scenario-controller.mjs`, `verify-determinism.mjs`, `verify-fleet.mjs`, `verify-vessel-animation.mjs`, `verify-spill-detection.mjs`, `verify-drift-correlation.mjs`, `verify-browser-cdp.mjs`.
+
+
+
+
 
 
 

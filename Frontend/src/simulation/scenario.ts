@@ -124,17 +124,16 @@ export const SCENARIO_VESSELS: ScenarioVesselSeed[] = [
     speed: 15.6,
     status: 'active',
     pattern: 'patrol',
-    // Localized patrol circuit at the Gulf of Kutch mouth, in open safe water
-    // near the navigable channel. The former circuit (22.39, 69.93) sat on the
-    // Saurashtra shore.
+    // Elongated maritime security sweep along the Gulf of Kutch entrance fairway:
+    // Paces between the outer Okha approach and the mid-gulf channel (~75 km corridor)
+    // with smooth, gradual turns along the deep-water navigation channel.
     waypoints: [
-      { lat: 22.461, lng: 69.262 },
-      { lat: 22.439, lng: 69.262 },
-      { lat: 22.439, lng: 69.238 },
-      { lat: 22.461, lng: 69.238 },
-      { lat: 22.461, lng: 69.262 },
+      { lat: 22.42, lng: 68.85 },
+      { lat: 22.52, lng: 69.05 },
+      { lat: 22.58, lng: 69.28 },
+      { lat: 22.65, lng: 69.52 },
     ],
-    startIndex: 0,
-    pingPong: false,
+    startIndex: 1,
+    pingPong: true,
   },
 ];

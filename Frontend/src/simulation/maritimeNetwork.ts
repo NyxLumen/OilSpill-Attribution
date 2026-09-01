@@ -140,9 +140,9 @@ export const FISHING_GROUNDS: Record<string, RoutePoint> = {
 export const PATROL_CENTERS: Record<string, RoutePoint> = {
   kandla: { lat: 22.75, lng: 70.0 },
   mundra: { lat: 22.7, lng: 69.65 },
-  // Porbandar patrol works ~14 km WSW of the port where the 1.8 km circuit
-  // keeps the whole loop in safe water.
   porbandar: { lat: 21.52, lng: 69.38 },
+  okha: { lat: 22.38, lng: 68.85 },
+  diu: { lat: 20.6, lng: 70.8 },
 };
 
 export const ANCHORAGES: Record<string, RoutePoint> = {

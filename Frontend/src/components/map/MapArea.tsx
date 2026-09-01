@@ -2,8 +2,8 @@ import { useRef, useCallback, useEffect } from 'react';
 import Map, { Source, Layer, type MapRef, type ViewStateChangeEvent } from 'react-map-gl/maplibre';
 import * as maplibregl from 'maplibre-gl';
 import maplibreglWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
-import { Plus, Minus, Compass, Crosshair } from 'lucide-react';
-import { useMapStore } from '@/store';
+import { Plus, Minus, Navigation as NavigationIcon, Crosshair } from 'lucide-react';
+import { useMapStore, useIncidentStore } from '@/store';
 import { DeckGLOverlay, useDeckLayers } from '@/map';
 
 // Explicitly configure MapLibre worker URL for Vite dev/prod bundling
@@ -29,18 +29,38 @@ if (typeof window !== 'undefined') {
 }
 
 /**
- * Standard Positron basemap style (light maritime theme)
+ * Standard Positron basemap style
  */
 const BASEMAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
 /**
  * AWS Open Data Global Elevation (Terrarium RGB DEM)
- * Using separate source IDs for 3D terrain mesh vs hillshade layer
- * prevents MapLibre GL JS source cache conflicts.
  */
 const TERRAIN_SOURCE_ID = 'terrain-dem-3d';
 const HILLSHADE_SOURCE_ID = 'terrain-dem-hillshade';
 const TERRAIN_TILES_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+
+/**
+ * Enhance Positron basemap water & land palette to match maritime reference design
+ */
+function applyMaritimeCartography(map: maplibregl.Map) {
+  try {
+    // Set rich maritime ocean blue for water layers
+    const waterLayers = ['water', 'waterway', 'water_shadow'];
+    for (const layerId of waterLayers) {
+      if (map.getLayer(layerId)) {
+        map.setPaintProperty(layerId, 'fill-color', '#1e6896');
+        map.setPaintProperty(layerId, 'fill-opacity', 0.88);
+      }
+    }
+
+    if (map.getLayer('background')) {
+      map.setPaintProperty('background', 'background-color', '#195e8a');
+    }
+  } catch (err) {
+    console.warn('[MapArea] Custom cartography styling applied with notes:', err);
+  }
+}
 
 /**
  * Apply terrain mode directly to a MapLibre Map instance
@@ -69,7 +89,7 @@ function applyTerrainMode(mode: 'flat' | 'hillshade' | '3d', map: maplibregl.Map
         });
       }
       map.setTerrain({ source: TERRAIN_SOURCE_ID, exaggeration: 2.5 });
-      map.easeTo({ pitch: 60, duration: 800 });
+      map.easeTo({ pitch: 55, duration: 800 });
     } else {
       map.setTerrain(null);
       if (map.getPitch() > 10) {
@@ -84,7 +104,10 @@ function applyTerrainMode(mode: 'flat' | 'hillshade' | '3d', map: maplibregl.Map
 /**
  * Map Controls Component
  *
- * Floating zoom, compass, and terrain mode controls for the map.
+ * Clean floating controls matching reference.png bottom-right:
+ * 1. Circular Navigation / Compass button
+ * 2. Vertical Zoom Pill [ + ] / [ - ]
+ * 3. Circular 3D toggle button
  */
 function MapControls({ mapRef }: { mapRef: React.RefObject<MapRef | null> }) {
   const { viewport, resetViewport, setViewport, terrainMode, setTerrainMode } = useMapStore();
@@ -109,105 +132,76 @@ function MapControls({ mapRef }: { mapRef: React.RefObject<MapRef | null> }) {
     resetViewport();
     if (mapRef.current) {
       mapRef.current.flyTo({
-        center: [69.6, 22.4],
-        zoom: 7.5,
-        pitch: terrainMode === '3d' ? 60 : 0,
+        center: [68.8, 20.6],
+        zoom: 7.2,
+        pitch: terrainMode === '3d' ? 55 : 0,
         bearing: 0,
         duration: 1200,
       });
     }
   };
 
-  const handleSelectMode = (mode: 'flat' | 'hillshade' | '3d') => {
-    setTerrainMode(mode);
+  const handleToggle3D = () => {
+    const nextMode = terrainMode === '3d' ? 'flat' : '3d';
+    setTerrainMode(nextMode);
     const map = mapRef.current?.getMap();
-    applyTerrainMode(mode, map);
+    applyTerrainMode(nextMode, map);
   };
 
   return (
-    <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-10">
-      {/* Zoom Controls */}
-      <div className="flex rounded-xl bg-surface-transparent backdrop-blur-md border border-border-subtle shadow-floating overflow-hidden">
-        <button
-          type="button"
-          onClick={handleZoomOut}
-          className="p-3 text-ocean-600 hover:text-ocean-900 hover:bg-ocean-50 transition-smooth"
-          aria-label="Zoom out"
-        >
-          <Minus className="w-5 h-5" />
-        </button>
-        <div className="w-px bg-border-subtle" />
+    <div className="absolute bottom-6 right-6 flex flex-col items-center gap-3 z-30 select-none">
+      {/* 1. Circular Compass / Orientation Button */}
+      <button
+        type="button"
+        onClick={handleResetView}
+        className="w-11 h-11 rounded-full bg-white/95 backdrop-blur-md border border-white/80 shadow-[0_8px_24px_rgba(0,0,0,0.08),0_2px_6px_rgba(0,0,0,0.04)] flex items-center justify-center text-ocean-700 hover:text-ocean-900 hover:bg-white active:scale-95 transition-smooth"
+        aria-label="Reset orientation"
+        title="Reset to North / Center Scenario"
+      >
+        <NavigationIcon className="w-4 h-4 fill-current transform rotate-45 text-ocean-800" />
+      </button>
+
+      {/* 2. Vertical Zoom Pill [ + ] / [ - ] */}
+      <div className="w-11 rounded-full bg-white/95 backdrop-blur-md border border-white/80 shadow-[0_8px_24px_rgba(0,0,0,0.08),0_2px_6px_rgba(0,0,0,0.04)] flex flex-col items-center overflow-hidden">
         <button
           type="button"
           onClick={handleZoomIn}
-          className="p-3 text-ocean-600 hover:text-ocean-900 hover:bg-ocean-50 transition-smooth"
+          className="w-full h-10 flex items-center justify-center text-ocean-700 hover:text-ocean-900 hover:bg-ocean-50 active:scale-95 transition-smooth"
           aria-label="Zoom in"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-4 h-4" />
+        </button>
+        <div className="w-6 h-px bg-ocean-200/80" />
+        <button
+          type="button"
+          onClick={handleZoomOut}
+          className="w-full h-10 flex items-center justify-center text-ocean-700 hover:text-ocean-900 hover:bg-ocean-50 active:scale-95 transition-smooth"
+          aria-label="Zoom out"
+        >
+          <Minus className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Compass & Reset */}
-      <div className="flex flex-col gap-1">
-        <button
-          type="button"
-          onClick={handleResetView}
-          className="w-12 h-12 rounded-xl bg-surface-transparent backdrop-blur-md border border-border-subtle shadow-floating flex items-center justify-center text-ocean-600 hover:text-ocean-900 hover:bg-ocean-50 transition-smooth"
-          aria-label="Reset view"
-          title="Reset to Arabian Sea"
-        >
-          <Compass className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Terrain Mode Controls (Flat, Hillshade, 3D) */}
-      <div className="flex flex-col rounded-xl bg-surface-transparent backdrop-blur-md border border-border-subtle shadow-floating overflow-hidden p-1 gap-1">
-        <button
-          type="button"
-          onClick={() => handleSelectMode('flat')}
-          className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-smooth text-center ${
-            terrainMode === 'flat'
-              ? 'bg-blue-accent text-white shadow-xs'
-              : 'text-ocean-600 hover:text-ocean-900 hover:bg-ocean-50'
-          }`}
-          aria-label="Flat terrain mode"
-          title="Flat 2D Basemap"
-        >
-          2D
-        </button>
-        <button
-          type="button"
-          onClick={() => handleSelectMode('hillshade')}
-          className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-smooth text-center ${
-            terrainMode === 'hillshade'
-              ? 'bg-blue-accent text-white shadow-xs'
-              : 'text-ocean-600 hover:text-ocean-900 hover:bg-ocean-50'
-          }`}
-          aria-label="Hillshade relief mode"
-          title="Topographic Shaded Relief"
-        >
-          Relief
-        </button>
-        <button
-          type="button"
-          onClick={() => handleSelectMode('3d')}
-          className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-smooth text-center ${
-            terrainMode === '3d'
-              ? 'bg-blue-accent text-white shadow-xs'
-              : 'text-ocean-600 hover:text-ocean-900 hover:bg-ocean-50'
-          }`}
-          aria-label="3D terrain mode"
-          title="3D Elevation DEM Mesh"
-        >
-          3D
-        </button>
-      </div>
+      {/* 3. Circular 3D Toggle Button */}
+      <button
+        type="button"
+        onClick={handleToggle3D}
+        className={`w-11 h-11 rounded-full bg-white/95 backdrop-blur-md border border-white/80 shadow-[0_8px_24px_rgba(0,0,0,0.08),0_2px_6px_rgba(0,0,0,0.04)] flex items-center justify-center text-xs font-extrabold active:scale-95 transition-smooth ${
+          terrainMode === '3d'
+            ? 'bg-blue-accent text-white border-blue-400/80 shadow-md shadow-blue-500/20'
+            : 'text-ocean-800 hover:text-ocean-950 hover:bg-white'
+        }`}
+        aria-label="Toggle 3D Terrain"
+        title="Toggle 3D Elevation Terrain"
+      >
+        3D
+      </button>
     </div>
   );
 }
 
 /**
- * Crosshair / Center Indicator
+ * Crosshair Center Indicator
  */
 function CrosshairOverlay() {
   return (
@@ -242,6 +236,26 @@ export function MapArea() {
     });
   }, [setViewport]);
 
+  // Gentle camera transition when entering focused Trace Source workflow
+  const isTraceSourceActive = useIncidentStore((state) => state.isTraceSourceActive);
+  const prevTraceSourceRef = useRef(false);
+
+  useEffect(() => {
+    if (isTraceSourceActive && !prevTraceSourceRef.current) {
+      const map = mapRef.current?.getMap();
+      if (map) {
+        map.flyTo({
+          center: [69.46, 22.53],
+          zoom: 8.8,
+          pitch: 0,
+          bearing: 0,
+          duration: 1000,
+        });
+      }
+    }
+    prevTraceSourceRef.current = isTraceSourceActive;
+  }, [isTraceSourceActive]);
+
   // Synchronize 3D terrain, hillshade layer visibility, and pitch with terrainMode
   useEffect(() => {
     const map = mapRef.current?.getMap();
@@ -249,7 +263,7 @@ export function MapArea() {
   }, [terrainMode]);
 
   return (
-    <main className="w-full h-full absolute inset-0 overflow-hidden bg-ocean-50">
+    <main className="w-full h-full absolute inset-0 overflow-hidden bg-[#1e6896]">
       {/* MapLibre Map Container */}
       <Map
         ref={mapRef}
@@ -264,9 +278,11 @@ export function MapArea() {
         mapStyle={BASEMAP_STYLE}
         onMove={handleMove}
         onLoad={(evt) => {
-          (window as unknown as { mapInstance?: unknown }).mapInstance = evt.target;
-          console.log('[MapArea] Map loaded successfully', evt.target);
-          applyTerrainMode(terrainMode, evt.target);
+          const map = evt.target;
+          (window as unknown as { mapInstance?: unknown }).mapInstance = map;
+          console.log('[MapArea] Map loaded successfully', map);
+          applyMaritimeCartography(map);
+          applyTerrainMode(terrainMode, map);
         }}
         onError={(err) => {
           console.error('[MapArea] Map error event:', err);
@@ -310,12 +326,6 @@ export function MapArea() {
 
       {/* Map Controls */}
       <MapControls mapRef={mapRef} />
-
-      {/* Scale Indicator */}
-      <div className="absolute bottom-6 left-6 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-transparent backdrop-blur-md border border-border-subtle text-xs text-ocean-600 z-10 shadow-floating">
-        <div className="w-16 h-0.5 bg-ocean-500 rounded-full" />
-        <span className="font-mono text-ocean-800">~10 km</span>
-      </div>
     </main>
   );
 }

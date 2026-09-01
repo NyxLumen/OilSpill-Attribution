@@ -8,6 +8,8 @@
 export { useMapStore } from './mapStore';
 export { useUIStore } from './uiStore';
 export { useIncidentStore } from './incidentStore';
+export { useScenarioStore } from './scenarioStore';
 
 export type { PanelId, Theme } from './uiStore';
 export type { InvestigationMode } from './incidentStore';
+export type { ScenarioState } from './scenarioStore';

@@ -1,17 +1,18 @@
 import { generateSimVessels, SIMULATION_SEED, VESSEL_COUNT } from './vesselGenerator';
-import { SCENARIO_START_MS, TIME_SCALE } from './kinematics';
 import { observedStateAt } from './aisJitter';
 import { generateTrailPoints } from './trailGenerator';
 import type { SimVessel, TrailGenOptions } from './types';
 import type { Vessel, VesselTrail } from '@/types/vessel';
 
+import { scenarioController } from './scenarioController';
+
 /**
  * Centralized deterministic vessel simulation.
  *
- * One clock drives the whole traffic field: `getSimTimeMs()` maps real
- * elapsed time onto the simulated scenario epoch. Vessel positions are pure
- * functions of (vessel definition, simulated time), so the same seed always
- * yields the same fleet and the same trajectory for a given elapsed time.
+ * One authoritative clock drives the whole traffic field via `scenarioController`:
+ * `getSimTimeMs()` queries the scenario controller's current simulated epoch.
+ * Vessel positions are pure functions of (vessel definition, simulated time),
+ * so the same seed always yields the same fleet and the same trajectory.
  *
  * The engine holds no per-vessel timers and no React state — deck.gl renders
  * whatever the provider returns on each poll, so the map can animate without
@@ -19,21 +20,19 @@ import type { Vessel, VesselTrail } from '@/types/vessel';
  */
 export class SimulationEngine {
   readonly vessels: SimVessel[];
-  private timeOriginMs: number;
 
   constructor(count = VESSEL_COUNT, seed = SIMULATION_SEED) {
     this.vessels = generateSimVessels(count, seed);
-    this.timeOriginMs = performance.now();
   }
 
-  /** Current simulated epoch (ms since Unix epoch), advanced from real time. */
+  /** Current simulated epoch (ms since Unix epoch), driven by scenarioController. */
   getSimTimeMs(): number {
-    return SCENARIO_START_MS + (performance.now() - this.timeOriginMs) * TIME_SCALE;
+    return scenarioController.getSimTimeMs();
   }
 
-  /** Re-anchor the clock to the scenario start (identical initial scenario). */
+  /** Re-anchor the scenario clock to the scenario start. */
   reset(): void {
-    this.timeOriginMs = performance.now();
+    scenarioController.reset();
   }
 
   /** Map a simulation vessel onto the domain `Vessel` model (reported AIS state). */

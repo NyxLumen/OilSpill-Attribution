@@ -3,9 +3,9 @@ import { hashString, mulberry32 } from './rng';
 import type { SimVessel, TrailGenOptions } from './types';
 import type { VesselTrail } from '@/types/vessel';
 
-/** Default historical window: 72 points, each ~a few report intervals long. */
-const DEFAULT_POINT_COUNT = 72;
-const MAX_POINT_COUNT = 120;
+/** Refined historical window: 32 points (~4-5h of recent track). */
+const DEFAULT_POINT_COUNT = 32;
+const MAX_POINT_COUNT = 48;
 
 /**
  * Generate a deterministic historical AIS trail for a vessel, sampled
@@ -26,12 +26,12 @@ export function generateTrailPoints(
   atMs: number,
   options?: TrailGenOptions
 ): VesselTrail['points'] {
-  if (def.route.totalKm <= 0) {
+  if (def.route.totalKm <= 0 || def.status === 'stopped') {
     return [];
   }
 
   const count = Math.max(2, Math.min(options?.pointCount ?? DEFAULT_POINT_COUNT, MAX_POINT_COUNT));
-  const baseIntervalS = options?.intervalSeconds ?? (def.aisReportPeriodS ?? 1200) * 4;
+  const baseIntervalS = options?.intervalSeconds ?? (def.aisReportPeriodS ?? 1200) * 1.5;
 
   const points: VesselTrail['points'] = [];
   let t = atMs;

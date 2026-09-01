@@ -7,6 +7,17 @@
  * (`MockDataProvider`) — UI components never touch it directly.
  */
 export { SimulationEngine, simulationEngine } from './simulationEngine';
+export {
+  ScenarioController,
+  scenarioController,
+  SCENARIO_TIMELINE_START_ISO,
+  SCENARIO_TIMELINE_START_MS,
+  SCENARIO_TIMELINE_END_ISO,
+  SCENARIO_TIMELINE_END_MS,
+  SCENARIO_TIMELINE_DURATION_MS,
+  DEFAULT_PLAYBACK_SPEED,
+} from './scenarioController';
+export type { ScenarioClockSnapshot, ScenarioListener } from './scenarioController';
 export { generateSimVessels, SIMULATION_SEED, VESSEL_COUNT } from './vesselGenerator';
 export { SCENARIO_START_ISO, SCENARIO_START_MS, TIME_SCALE } from './kinematics';
 export type { SimVessel, TrafficPattern, TrailGenOptions } from './types';
