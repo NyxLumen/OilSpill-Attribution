@@ -796,6 +796,20 @@ Turns the Phase 4.8 calibration data into concrete corrections to the synthetic 
   - `scripts/verify-scenario-controller.mjs`: Play advances time, Pause freezes time, Resume continues from paused epoch, Reset returns to exact start (07:20:00Z), all 8 phase checkpoints verify correct phase transitions, 50% scrub lands on 08:15:00Z (`correlating`), and `SimulationEngine` synchronizes identically with `scenarioController`.
   - `scripts/verify-determinism.mjs`: All checks passed.
 
+### Task 2 — Vessel Animation Driven by Scenario Clock
+
+- **Deck.gl Animation & GPU Transitions (`src/map/layers/vesselLayer.ts`):**
+  - Added GPU-accelerated linear position and heading transitions (`transitions.getPosition`, `transitions.getAngle` with 150 ms linear duration) to `IconLayer` and `ScatterplotLayer`.
+  - Smooth continuous gliding between data updates without jerky discrete jumps or client-side stepping loops.
+- **Authoritative Polling & Reactive Invalidation (`src/map/layers/useDeckLayers.ts`):**
+  - Polling interval dynamically tied to `isPlaying`: 150 ms (≈6.7 Hz) when playing, disabled (`false`) when paused.
+  - Subscribed `useDeckLayers` to `scenarioController` for immediate, frame-instantaneous query invalidation on seek, scrub, reset, or pause/resume transitions.
+- **Verification:**
+  - `npm run build` (`tsc -b && vite build`) clean (0 errors).
+  - `npm run lint` clean (0 errors).
+  - `scripts/verify-vessel-animation.mjs`: 36 vessels loaded at $t=0$; playing advances positions naturally for all active vessels; pausing freezes all 36 vessels bit-identically across time; resuming continues from paused coordinates; reset returns all 36 vessels to bit-identical baseline positions; scrubbing to 50% ($t=\text{08:15:00Z}$) is 100% deterministic; and top candidate `vsl-001` (Ocean Guardian) moves outbound west along the verified deep-water channel.
+
+
 
 
 

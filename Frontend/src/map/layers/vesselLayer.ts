@@ -96,6 +96,12 @@ export function createVesselLayers(options: VesselLayerOptions): Layer[] {
           getLineColor: [59, 130, 246, 220],
           getLineWidth: 2,
           lineWidthMinPixels: 2,
+          transitions: {
+            getPosition: {
+              duration: 150,
+              easing: (t: number) => t,
+            },
+          },
           pickable: false,
         })
       );
@@ -127,6 +133,16 @@ export function createVesselLayers(options: VesselLayerOptions): Layer[] {
       sizeMaxPixels: 44,
       // Convert maritime heading (clockwise from North) to deck.gl angle (CCW)
       getAngle: (d: Vessel) => (360 - (d.heading % 360)) % 360,
+      transitions: {
+        getPosition: {
+          duration: 150,
+          easing: (t: number) => t,
+        },
+        getAngle: {
+          duration: 150,
+          easing: (t: number) => t,
+        },
+      },
       onClick: (info) => {
         if (info.object && onSelectVessel) {
           onSelectVessel(info.object.id);
