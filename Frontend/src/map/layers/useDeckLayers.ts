@@ -44,7 +44,9 @@ export function useDeckLayers(): Layer[] {
   const phase = useScenarioStore((state) => state.phase);
   const simTimeMs = useScenarioStore((state) => state.simTimeMs);
 
-  const isCorrelating = phase === 'correlating' || phase === 'attribution-ready';
+  const isCorrelating = phase === 'correlating';
+  const isAttributed = phase === 'attribution-ready';
+  const isInvestigationActive = isCorrelating || isAttributed;
 
   // 1. Vessels Query
   const { data: vessels = [] } = useQuery({
@@ -68,25 +70,26 @@ export function useDeckLayers(): Layer[] {
   const { data: candidates = [] } = useQuery({
     queryKey: ['candidates', activeIncident?.id],
     queryFn: () => (activeIncident ? dataProvider.getCandidates(activeIncident.id) : []),
-    enabled: Boolean(activeIncident && isCorrelating),
+    enabled: Boolean(activeIncident && isInvestigationActive),
     staleTime: 0,
-    refetchInterval: isPlaying && isCorrelating ? SIM_POLL_TRAILS_MS : false,
+    refetchInterval: isPlaying && isInvestigationActive ? SIM_POLL_TRAILS_MS : false,
   });
 
   const candidateVesselIds = useMemo(() => candidates.map((c) => c.vesselId), [candidates]);
+  const topCandidateId = useMemo(() => (candidates.length > 0 ? candidates[0].vesselId : null), [candidates]);
   const vesselIds = useMemo(() => vessels.map((v) => v.id), [vessels]);
 
   // 4. Selective Trail Targets
-  // Fetch all trails if layer is visible, or candidate trails during correlation, or selected vessel
+  // Fetch all trails if layer is visible, or candidate trails during correlation/attribution, or selected vessel
   const trailTargetIds = useMemo(() => {
     if (layerVisibility.vesselTrails) return vesselIds;
     const targets = new Set<string>();
     if (selectedVesselId) targets.add(selectedVesselId);
-    if (isCorrelating) {
+    if (isInvestigationActive) {
       for (const id of candidateVesselIds) targets.add(id);
     }
     return Array.from(targets);
-  }, [layerVisibility.vesselTrails, selectedVesselId, isCorrelating, candidateVesselIds, vesselIds]);
+  }, [layerVisibility.vesselTrails, selectedVesselId, isInvestigationActive, candidateVesselIds, vesselIds]);
 
   const { data: trails = [] } = useQuery({
     queryKey: ['vessel-trails', trailTargetIds],
@@ -146,8 +149,8 @@ export function useDeckLayers(): Layer[] {
     const activeLayers: Layer[] = [];
 
     // 1. Environmental Forces Layer (Ocean currents & wind flow)
-    const showEnvCurrents = layerVisibility.oceanCurrents || isCorrelating;
-    const showEnvWind = layerVisibility.windFlow || isCorrelating;
+    const showEnvCurrents = layerVisibility.oceanCurrents || isInvestigationActive;
+    const showEnvWind = layerVisibility.windFlow || isInvestigationActive;
     if (showEnvCurrents || showEnvWind) {
       activeLayers.push(
         ...createEnvironmentLayers({
@@ -155,7 +158,7 @@ export function useDeckLayers(): Layer[] {
           driftVector,
           showCurrents: showEnvCurrents,
           showWind: showEnvWind,
-          showDriftVector: isCorrelating && incidents.length > 0,
+          showDriftVector: isInvestigationActive && incidents.length > 0,
           driftOrigin: activeIncident?.location,
         })
       );
@@ -167,7 +170,7 @@ export function useDeckLayers(): Layer[] {
         ...createSpillLayers({
           incidents,
           selectedIncidentId,
-          isCorrelating,
+          isCorrelating: isInvestigationActive,
           onSelectIncident: handleSelectIncident,
         })
       );
@@ -175,7 +178,7 @@ export function useDeckLayers(): Layer[] {
 
     // 3. Vessel Trails Layer
     const showTrails =
-      (layerVisibility.vesselTrails || selectedVesselId !== null || (isCorrelating && candidateVesselIds.length > 0)) &&
+      (layerVisibility.vesselTrails || selectedVesselId !== null || (isInvestigationActive && candidateVesselIds.length > 0)) &&
       trails.length > 0;
     if (showTrails) {
       activeLayers.push(
@@ -183,7 +186,9 @@ export function useDeckLayers(): Layer[] {
           trails,
           selectedVesselId,
           candidateVesselIds,
+          topCandidateId,
           isCorrelating,
+          isAttributed,
         })
       );
     }
@@ -195,7 +200,9 @@ export function useDeckLayers(): Layer[] {
           vessels,
           selectedVesselId,
           candidateVesselIds,
+          topCandidateId,
           isCorrelating,
+          isAttributed,
           onSelectVessel: handleSelectVessel,
         })
       );
@@ -208,7 +215,9 @@ export function useDeckLayers(): Layer[] {
     layerVisibility.oilSpills,
     layerVisibility.vesselTrails,
     layerVisibility.vessels,
+    isInvestigationActive,
     isCorrelating,
+    isAttributed,
     oceanConditions,
     driftVector,
     incidents,
@@ -217,6 +226,7 @@ export function useDeckLayers(): Layer[] {
     handleSelectIncident,
     selectedVesselId,
     candidateVesselIds,
+    topCandidateId,
     trails,
     vessels,
     handleSelectVessel,
