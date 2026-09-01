@@ -9,6 +9,7 @@ import { createVesselLayers } from './vesselLayer';
 import { createSpillLayers } from './spillLayer';
 import { createTrailLayers } from './trailLayer';
 import { createEnvironmentLayers } from './environmentLayer';
+import { createTraceSourceLayers } from './traceSourceLayer';
 
 /**
  * Poll interval (ms) for live simulation updates on the map when playing.
@@ -25,9 +26,10 @@ const SIM_POLL_TRAILS_MS = 300;
  * Layer Composition Order (lowest to highest):
  *   1. Environmental Fields (Ocean Currents & Wind Flow)
  *   2. Oil Spills (Polygon body, boundary, backtrack, origin, forecast)
- *   3. Vessel Trails (Subdued background, highlighted candidates, active selected)
- *   4. Vessels (2D Directional symbols + candidate indicators + selection halo)
- *   5. Net Surface Drift Vector
+ *   3. Trace Source Reconstructed Geometry (Release corridor, closest approach vector, origin target)
+ *   4. Vessel Trails (Subdued background, highlighted candidates, top candidate historical track)
+ *   5. Vessels (2D Directional symbols + candidate indicators + selection halo + replay marker)
+ *   6. Net Surface Drift Vector
  */
 export function useDeckLayers(): Layer[] {
   const dataProvider = useDataProvider();
@@ -37,6 +39,10 @@ export function useDeckLayers(): Layer[] {
   const layerVisibility = useMapStore((state) => state.layerVisibility);
   const selectedVesselId = useIncidentStore((state) => state.selectedVesselId);
   const selectedIncidentId = useIncidentStore((state) => state.selectedIncidentId);
+  const isTraceSourceActive = useIncidentStore((state) => state.isTraceSourceActive);
+  const replayPointIndex = useIncidentStore((state) => state.replayPointIndex);
+  const isReplaying = useIncidentStore((state) => state.isReplaying);
+  const setTraceSourceActive = useIncidentStore((state) => state.setTraceSourceActive);
   const selectVessel = useIncidentStore((state) => state.selectVessel);
   const selectIncident = useIncidentStore((state) => state.selectIncident);
   const setActivePanel = useUIStore((state) => state.setActivePanel);
@@ -47,6 +53,13 @@ export function useDeckLayers(): Layer[] {
   const isCorrelating = phase === 'correlating';
   const isAttributed = phase === 'attribution-ready';
   const isInvestigationActive = isCorrelating || isAttributed;
+
+  // Auto-deactivate Trace Source if timeline scrubbed backward before attribution-ready
+  useEffect(() => {
+    if (!isAttributed && isTraceSourceActive) {
+      setTraceSourceActive(false);
+    }
+  }, [isAttributed, isTraceSourceActive, setTraceSourceActive]);
 
   // 1. Vessels Query
   const { data: vessels = [] } = useQuery({
@@ -144,6 +157,33 @@ export function useDeckLayers(): Layer[] {
   const oceanConditions = useMemo(() => environmentAt(simTimeMs), [simTimeMs]);
   const driftVector = useMemo(() => driftVectorAt(simTimeMs), [simTimeMs]);
 
+  // Trace Source geometry details
+  const topCandidateTrail = useMemo(() => {
+    return trails.find((t) => t.vesselId === (topCandidateId ?? 'vsl-001')) || null;
+  }, [trails, topCandidateId]);
+
+  const estimatedOrigin = useMemo(() => {
+    const geom = activeIncident?.geometry as { origin?: { lat: number; lng: number } } | undefined;
+    return geom?.origin ?? { lat: 22.5171, lng: 69.5857 };
+  }, [activeIncident]);
+
+  const closestApproachPoint = useMemo(() => {
+    if (!topCandidateTrail || topCandidateTrail.points.length === 0 || !estimatedOrigin) {
+      return { lat: 22.5389, lng: 69.5620 };
+    }
+    // Find point with minimum distance to estimated origin
+    let minDist = Infinity;
+    let closest = { lat: 22.5389, lng: 69.5620 };
+    for (const p of topCandidateTrail.points) {
+      const d = Math.hypot(p.lat - estimatedOrigin.lat, p.lng - estimatedOrigin.lng);
+      if (d < minDist) {
+        minDist = d;
+        closest = { lat: p.lat, lng: p.lng };
+      }
+    }
+    return closest;
+  }, [topCandidateTrail, estimatedOrigin]);
+
   // Compose memoized deck.gl layers
   const layers = useMemo<Layer[]>(() => {
     const activeLayers: Layer[] = [];
@@ -176,7 +216,21 @@ export function useDeckLayers(): Layer[] {
       );
     }
 
-    // 3. Vessel Trails Layer
+    // 3. Trace Source Reconstructed Geometry Layers
+    if (isTraceSourceActive) {
+      activeLayers.push(
+        ...createTraceSourceLayers({
+          isTraceSourceActive,
+          topCandidateTrail,
+          estimatedOrigin,
+          closestApproachPoint,
+          replayPointIndex,
+          isReplaying,
+        })
+      );
+    }
+
+    // 4. Vessel Trails Layer
     const showTrails =
       (layerVisibility.vesselTrails || selectedVesselId !== null || (isInvestigationActive && candidateVesselIds.length > 0)) &&
       trails.length > 0;
@@ -189,11 +243,12 @@ export function useDeckLayers(): Layer[] {
           topCandidateId,
           isCorrelating,
           isAttributed,
+          isTraceSourceActive,
         })
       );
     }
 
-    // 4. 2D Vessels Layer
+    // 5. 2D Vessels Layer
     if (layerVisibility.vessels && vessels.length > 0) {
       activeLayers.push(
         ...createVesselLayers({
@@ -203,6 +258,7 @@ export function useDeckLayers(): Layer[] {
           topCandidateId,
           isCorrelating,
           isAttributed,
+          isTraceSourceActive,
           onSelectVessel: handleSelectVessel,
         })
       );
@@ -218,6 +274,9 @@ export function useDeckLayers(): Layer[] {
     isInvestigationActive,
     isCorrelating,
     isAttributed,
+    isTraceSourceActive,
+    replayPointIndex,
+    isReplaying,
     oceanConditions,
     driftVector,
     incidents,
@@ -227,6 +286,9 @@ export function useDeckLayers(): Layer[] {
     selectedVesselId,
     candidateVesselIds,
     topCandidateId,
+    topCandidateTrail,
+    estimatedOrigin,
+    closestApproachPoint,
     trails,
     vessels,
     handleSelectVessel,

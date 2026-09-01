@@ -3,7 +3,7 @@ import Map, { Source, Layer, type MapRef, type ViewStateChangeEvent } from 'reac
 import * as maplibregl from 'maplibre-gl';
 import maplibreglWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import { Plus, Minus, Navigation as NavigationIcon, Crosshair } from 'lucide-react';
-import { useMapStore } from '@/store';
+import { useMapStore, useIncidentStore } from '@/store';
 import { DeckGLOverlay, useDeckLayers } from '@/map';
 
 // Explicitly configure MapLibre worker URL for Vite dev/prod bundling
@@ -235,6 +235,26 @@ export function MapArea() {
       pitch: evt.viewState.pitch,
     });
   }, [setViewport]);
+
+  // Gentle camera transition when entering focused Trace Source workflow
+  const isTraceSourceActive = useIncidentStore((state) => state.isTraceSourceActive);
+  const prevTraceSourceRef = useRef(false);
+
+  useEffect(() => {
+    if (isTraceSourceActive && !prevTraceSourceRef.current) {
+      const map = mapRef.current?.getMap();
+      if (map) {
+        map.flyTo({
+          center: [69.46, 22.53],
+          zoom: 8.8,
+          pitch: 0,
+          bearing: 0,
+          duration: 1000,
+        });
+      }
+    }
+    prevTraceSourceRef.current = isTraceSourceActive;
+  }, [isTraceSourceActive]);
 
   // Synchronize 3D terrain, hillshade layer visibility, and pitch with terrainMode
   useEffect(() => {

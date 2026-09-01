@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import {
   X,
   Droplet,
   ArrowRight,
+  ArrowLeft,
   Ship,
   Navigation,
   Compass,
@@ -13,6 +15,12 @@ import {
   Waves,
   Activity,
   CheckCircle2,
+  Play,
+  Pause,
+  RotateCw,
+  MapPin,
+  Calendar,
+  Crosshair,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useUIStore, useIncidentStore, useScenarioStore } from '@/store';
@@ -865,6 +873,276 @@ function IncidentInvestigationPanel({
 }
 
 /**
+ * Focused Trace Source Dossier Card (Active in Trace Source Workflow)
+ *
+ * Provides:
+ *  1. Header with back navigation: ← BACK TO ATTRIBUTION
+ *  2. Primary Source Suspect card (Ocean Guardian, 96.5%, High Confidence)
+ *  3. Reconstructed Event Metrics (Release window, closest approach, origin coordinate)
+ *  4. Supporting Evidence Findings
+ *  5. Interactive Historical Replay controls (Play/Pause, scrub, milestone highlights)
+ */
+function TraceSourceDossierCard({
+  candidate,
+  onBack,
+}: {
+  candidate: SuspectVessel;
+  onBack: () => void;
+}) {
+  const dataProvider = useDataProvider();
+  const isReplaying = useIncidentStore((state) => state.isReplaying);
+  const replayPointIndex = useIncidentStore((state) => state.replayPointIndex);
+  const setIsReplaying = useIncidentStore((state) => state.setIsReplaying);
+  const setReplayPointIndex = useIncidentStore((state) => state.setReplayPointIndex);
+
+  const { data: vessels = [] } = useQuery({
+    queryKey: ['vessels'],
+    queryFn: () => dataProvider.getVessels(),
+  });
+
+  const { data: trail = null } = useQuery({
+    queryKey: ['vessel-trail', candidate.vesselId],
+    queryFn: () => dataProvider.getVesselTrail(candidate.vesselId),
+  });
+
+  const vessel = vessels.find((v) => v.id === candidate.vesselId);
+  const color = vessel ? VESSEL_TYPE_COLORS[vessel.type] : '#f59e0b';
+  const totalPoints = trail?.points.length ?? 32;
+  const currentIndex = replayPointIndex ?? (totalPoints - 1);
+
+  // Automatic sequential replay timer (advances through the 32 historical AIS points)
+  useEffect(() => {
+    if (!isReplaying) return;
+    const timer = setInterval(() => {
+      useIncidentStore.setState((state) => {
+        const next = (state.replayPointIndex ?? 0) + 1;
+        if (next >= totalPoints) {
+          return { isReplaying: false, replayPointIndex: totalPoints - 1 };
+        }
+        return { replayPointIndex: next };
+      });
+    }, 240);
+    return () => clearInterval(timer);
+  }, [isReplaying, totalPoints]);
+
+  const currentPoint = trail?.points[Math.min(currentIndex, (trail?.points.length ?? 1) - 1)];
+  const currentTimestampLabel = currentPoint?.timestamp
+    ? new Date(currentPoint.timestamp).toISOString().slice(11, 16) + ' UTC'
+    : '08:41 UTC';
+
+  const handleToggleReplay = () => {
+    if (isReplaying) {
+      setIsReplaying(false);
+    } else {
+      if (replayPointIndex === null || replayPointIndex >= totalPoints - 1) {
+        setReplayPointIndex(0);
+      }
+      setIsReplaying(true);
+    }
+  };
+
+  const handleRestartReplay = () => {
+    setReplayPointIndex(0);
+    setIsReplaying(true);
+  };
+
+  return (
+    <div className="w-88 rounded-2xl bg-white/95 backdrop-blur-md border border-amber-300/90 shadow-[0_16px_40px_rgba(0,0,0,0.12),0_2px_8px_rgba(245,158,11,0.08)] p-5 text-ocean-900 transition-smooth">
+      {/* Back to Attribution Header */}
+      <div className="flex items-center justify-between pb-3 border-b border-ocean-100 mb-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-xs font-bold text-ocean-600 hover:text-ocean-900 transition-smooth group"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-smooth" />
+          <span>BACK TO ATTRIBUTION</span>
+        </button>
+        <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-amber-100 text-amber-900 border border-amber-300">
+          SOURCE RECONSTRUCTION
+        </span>
+      </div>
+
+      {/* Suspect Protagonist Card */}
+      <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-300 mb-3 shadow-xs">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center border shrink-0 shadow-xs"
+              style={{ backgroundColor: `${color}25`, borderColor: `${color}80` }}
+            >
+              <Ship className="w-5 h-5" style={{ color }} />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-extrabold uppercase tracking-wider text-amber-900">
+                IDENTIFIED SOURCE
+              </div>
+              <h3 className="text-base font-extrabold text-ocean-900 leading-tight truncate">
+                {vessel ? vessel.name : candidate.vesselId}
+              </h3>
+              <div className="text-[11px] font-medium text-ocean-600 truncate">
+                {vessel ? `${vesselClassLabel(vessel.type)} • IMO ${vessel.imo}` : 'Oil Tanker'}
+              </div>
+            </div>
+          </div>
+
+          <div className="text-right shrink-0">
+            <div className="text-xl font-black text-amber-900 font-mono leading-none">
+              {(candidate.matchScore * 100).toFixed(1)}%
+            </div>
+            <div className="text-[9px] font-bold text-amber-800 uppercase tracking-tight mt-0.5">
+              SOURCE MATCH
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-amber-200/80 text-[10px]">
+          <span className="font-bold text-amber-900 uppercase">Operational Status</span>
+          <span className="px-1.5 py-0.2 rounded font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
+            HIGH CONFIDENCE
+          </span>
+        </div>
+      </div>
+
+      {/* Reconstructed Event Evidence Metrics */}
+      <div className="p-3 rounded-xl bg-ocean-50/70 border border-border-subtle mb-3 space-y-2 text-xs">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-ocean-700 pb-1 border-b border-ocean-200/50 flex items-center justify-between">
+          <span>RECONSTRUCTED EVENT</span>
+          <span className="font-mono text-ocean-500">INC-2026-001</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 pt-0.5">
+          <div className="p-2 rounded-lg bg-surface-white border border-border-subtle">
+            <div className="flex items-center gap-1 text-[10px] font-semibold text-ocean-500 uppercase">
+              <Calendar className="w-3.5 h-3.5 text-blue-accent" />
+              <span>Release Window</span>
+            </div>
+            <div className="font-mono font-bold text-xs text-ocean-900 mt-0.5">06:12–07:27 UTC</div>
+          </div>
+
+          <div className="p-2 rounded-lg bg-surface-white border border-border-subtle">
+            <div className="flex items-center gap-1 text-[10px] font-semibold text-ocean-500 uppercase">
+              <MapPin className="w-3.5 h-3.5 text-amber-600" />
+              <span>Closest Approach</span>
+            </div>
+            <div className="font-mono font-bold text-xs text-amber-800 mt-0.5">2.8 km @ 07:00Z</div>
+          </div>
+
+          <div className="p-2 rounded-lg bg-surface-white border border-border-subtle">
+            <div className="flex items-center gap-1 text-[10px] font-semibold text-ocean-500 uppercase">
+              <Gauge className="w-3.5 h-3.5 text-blue-accent" />
+              <span>Underway Speed</span>
+            </div>
+            <div className="font-mono font-bold text-xs text-ocean-900 mt-0.5">9.4 kn Transit</div>
+          </div>
+
+          <div className="p-2 rounded-lg bg-surface-white border border-border-subtle">
+            <div className="flex items-center gap-1 text-[10px] font-semibold text-ocean-500 uppercase">
+              <Crosshair className="w-3.5 h-3.5 text-purple-600" />
+              <span>Estimated Origin</span>
+            </div>
+            <div className="font-mono font-bold text-[11px] text-ocean-900 mt-0.5">22.517°N, 69.586°E</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Supporting Evidence Checklist */}
+      <div className="p-3 rounded-xl bg-surface-white border border-border-subtle mb-3 space-y-2">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-ocean-700 pb-1 border-b border-ocean-100">
+          ATTRIBUTION EVIDENCE
+        </div>
+        <div className="space-y-1.5 text-[11px] text-ocean-700">
+          <div className="flex items-start gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+            <span>AIS trajectory intersects release corridor (2.8 km at 07:00Z)</span>
+          </div>
+          <div className="flex items-start gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+            <span>Historical position falls inside release window (06:12–07:27 UTC)</span>
+          </div>
+          <div className="flex items-start gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+            <span>Route crosses the release corridor (100% trajectory proximity)</span>
+          </div>
+          <div className="flex items-start gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+            <span>Transit speed (9.4 kn) matches underway discharge maneuver</span>
+          </div>
+          <div className="flex items-start gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+            <span>Track aligns with modeled wind and current drift vector</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Interactive Historical Source Replay */}
+      <div className="p-3.5 rounded-xl bg-ocean-900 text-white shadow-md mb-2 space-y-2.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-ocean-200">
+              HISTORICAL SOURCE REPLAY
+            </span>
+          </div>
+          <span className="font-mono text-xs font-extrabold text-cyan-300">
+            {currentTimestampLabel}
+          </span>
+        </div>
+
+        {/* Scrub Slider */}
+        <div className="space-y-1">
+          <input
+            type="range"
+            min={0}
+            max={totalPoints - 1}
+            value={currentIndex}
+            onChange={(e) => {
+              setIsReplaying(false);
+              setReplayPointIndex(parseInt(e.target.value, 10));
+            }}
+            className="w-full h-1.5 bg-ocean-700 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+          />
+          <div className="flex justify-between text-[9px] text-ocean-400 font-mono">
+            <span>06:12Z (Start)</span>
+            <span className="text-amber-400 font-bold">07:00Z (Closest)</span>
+            <span>08:41Z (Now)</span>
+          </div>
+        </div>
+
+        {/* Replay Controls */}
+        <div className="flex items-center justify-between pt-1">
+          <button
+            type="button"
+            onClick={handleToggleReplay}
+            className="flex-1 py-1.5 rounded-lg bg-blue-accent hover:bg-blue-accent/90 active:scale-95 text-white font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-1.5 transition-smooth"
+          >
+            {isReplaying ? (
+              <>
+                <Pause className="w-3.5 h-3.5 fill-current" />
+                <span>Pause Replay</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>Replay Source Event</span>
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={handleRestartReplay}
+            className="ml-2 p-2 rounded-lg bg-ocean-800 hover:bg-ocean-700 text-ocean-300 hover:text-white transition-smooth"
+            title="Restart Replay"
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * OceanWatch Right Intelligence Stack
  *
  * Reacts dynamically to scenario phase and user interactions:
@@ -872,12 +1150,15 @@ function IncidentInvestigationPanel({
  * - spill-detected (07:42): OilSpillCard
  * - correlating (08:00): OilSpillCard + AISCorrelationCard
  * - attribution-ready (08:41): OilSpillCard + AttributionSummaryCard (Explainable attribution conclusion)
+ * - trace-source active (08:41+): TraceSourceDossierCard (Full source reconstruction and replay)
  * - panel toggles: VesselTelemetryDrawer, VesselFleetList, IncidentInvestigationPanel
  */
 export function DetailPanel() {
   const dataProvider = useDataProvider();
   const { activePanel, setActivePanel, closePanel } = useUIStore();
   const selectedVesselId = useIncidentStore((state) => state.selectedVesselId);
+  const isTraceSourceActive = useIncidentStore((state) => state.isTraceSourceActive);
+  const setTraceSourceActive = useIncidentStore((state) => state.setTraceSourceActive);
   const selectVessel = useIncidentStore((state) => state.selectVessel);
   const selectIncident = useIncidentStore((state) => state.selectIncident);
   const isPlaying = useScenarioStore((state) => state.isPlaying);
@@ -913,6 +1194,8 @@ export function DetailPanel() {
     ? vessels.find((v) => v.id === selectedVesselId) || null
     : null;
 
+  const topCandidate = candidates[0] || null;
+
   const handleInvestigate = () => {
     if (activeIncident) {
       selectIncident(activeIncident.id);
@@ -929,13 +1212,20 @@ export function DetailPanel() {
     selectVessel(vesselId);
   };
 
-  const handleTraceSource = (vesselId: string) => {
-    selectVessel(vesselId);
-    setActivePanel('vessels');
+  const handleTraceSource = () => {
+    if (topCandidate) {
+      selectVessel(topCandidate.vesselId);
+      setTraceSourceActive(true);
+      setActivePanel(null); // Return to main map overview with Trace Source card
+    }
+  };
+
+  const handleBackFromTraceSource = () => {
+    setTraceSourceActive(false);
   };
 
   // If nothing to display in default mode before detection, return null
-  if (activePanel === null && !isDetected && !selectedVessel) {
+  if (activePanel === null && !isDetected && !selectedVessel && !isTraceSourceActive) {
     return null;
   }
 
@@ -964,8 +1254,14 @@ export function DetailPanel() {
             onClose={() => closePanel()}
           />
         ) : null
+      ) : isTraceSourceActive && topCandidate ? (
+        /* 3. Dedicated Trace Source Reconstructed Dossier Card */
+        <TraceSourceDossierCard
+          candidate={topCandidate}
+          onBack={handleBackFromTraceSource}
+        />
       ) : (
-        /* 3. Default Overview: Dynamic Spill Detection, Correlation, & Explainable Attribution Progression */
+        /* 4. Default Overview: Dynamic Spill Detection, Correlation, & Explainable Attribution Progression */
         <>
           {isDetected && activeIncident && (
             <OilSpillCard

@@ -72,12 +72,13 @@ export interface VesselLayerOptions {
   topCandidateId?: string | null;
   isCorrelating?: boolean;
   isAttributed?: boolean;
+  isTraceSourceActive?: boolean;
   onSelectVessel?: (vesselId: string) => void;
 }
 
 /**
  * Creates deck.gl layers for rendering 2D directional vessels with
- * restrained visual hierarchy during investigation correlation and attribution.
+ * restrained visual hierarchy during investigation correlation, attribution, and trace source.
  */
 export function createVesselLayers(options: VesselLayerOptions): Layer[] {
   const {
@@ -87,6 +88,7 @@ export function createVesselLayers(options: VesselLayerOptions): Layer[] {
     topCandidateId = null,
     isCorrelating = false,
     isAttributed = false,
+    isTraceSourceActive = false,
     onSelectVessel,
   } = options;
 
@@ -97,7 +99,7 @@ export function createVesselLayers(options: VesselLayerOptions): Layer[] {
   }
 
   const candidateSet = new Set(candidateVesselIds);
-  const isInvestigationActive = isCorrelating || isAttributed;
+  const isInvestigationActive = isCorrelating || isAttributed || isTraceSourceActive;
 
   // 1. Candidate correlation indicator halos (restrained cyan ring around non-winning candidate vessels)
   if (isInvestigationActive && candidateVesselIds.length > 0) {
@@ -105,7 +107,7 @@ export function createVesselLayers(options: VesselLayerOptions): Layer[] {
       (v) =>
         candidateSet.has(v.id) &&
         v.id !== selectedVesselId &&
-        v.id !== (isAttributed ? topCandidateId : null)
+        v.id !== ((isAttributed || isTraceSourceActive) ? topCandidateId : null)
     );
     if (nonWinningCandidates.length > 0) {
       layers.push(
@@ -114,12 +116,12 @@ export function createVesselLayers(options: VesselLayerOptions): Layer[] {
           data: nonWinningCandidates,
           getPosition: (d: Vessel) => [d.position.lng, d.position.lat],
           getRadius: 320,
-          radiusMinPixels: 16,
-          radiusMaxPixels: 36,
+          radiusMinPixels: 14,
+          radiusMaxPixels: 34,
           stroked: true,
           filled: true,
-          getFillColor: [6, 182, 212, 20],   // Restrained cyan fill
-          getLineColor: [6, 182, 212, 180],  // Cyan indicator stroke
+          getFillColor: [6, 182, 212, isTraceSourceActive ? 15 : 20],
+          getLineColor: [6, 182, 212, isTraceSourceActive ? 140 : 180],
           getLineWidth: 1.5,
           lineWidthMinPixels: 1.5,
           transitions: {
@@ -132,7 +134,7 @@ export function createVesselLayers(options: VesselLayerOptions): Layer[] {
   }
 
   // 2. Top Candidate Attribution Halo (prominent warm amber ring around identified source vessel)
-  if (isAttributed && topCandidateId) {
+  if ((isAttributed || isTraceSourceActive) && topCandidateId) {
     const topVessel = vessels.find((v) => v.id === topCandidateId && v.id !== selectedVesselId);
     if (topVessel) {
       layers.push(
@@ -140,15 +142,15 @@ export function createVesselLayers(options: VesselLayerOptions): Layer[] {
           id: 'vessels-attribution-halo',
           data: [topVessel],
           getPosition: (d: Vessel) => [d.position.lng, d.position.lat],
-          getRadius: 440,
-          radiusMinPixels: 24,
-          radiusMaxPixels: 52,
+          getRadius: isTraceSourceActive ? 520 : 440,
+          radiusMinPixels: isTraceSourceActive ? 28 : 24,
+          radiusMaxPixels: isTraceSourceActive ? 60 : 52,
           stroked: true,
           filled: true,
-          getFillColor: [245, 158, 11, 40],   // Distinct warm amber fill
-          getLineColor: [245, 158, 11, 235],  // Amber attribution stroke
-          getLineWidth: 2.5,
-          lineWidthMinPixels: 2.5,
+          getFillColor: [245, 158, 11, isTraceSourceActive ? 50 : 40],   // Distinct warm amber fill
+          getLineColor: [245, 158, 11, 245],                              // Amber attribution stroke
+          getLineWidth: isTraceSourceActive ? 3 : 2.5,
+          lineWidthMinPixels: isTraceSourceActive ? 3 : 2.5,
           transitions: {
             getPosition: { duration: 150, easing: (t: number) => t },
           },
@@ -196,7 +198,7 @@ export function createVesselLayers(options: VesselLayerOptions): Layer[] {
       getPosition: (d: Vessel) => [d.position.lng, d.position.lat],
       getIcon: (d: Vessel) => {
         const isSelected = d.id === selectedVesselId;
-        const isTop = isAttributed && d.id === topCandidateId;
+        const isTop = (isAttributed || isTraceSourceActive) && d.id === topCandidateId;
         const isCandidate = isInvestigationActive && candidateSet.has(d.id);
         return {
           url: getVesselIconUrl(d.type, isSelected, isCandidate, isTop),
@@ -208,20 +210,27 @@ export function createVesselLayers(options: VesselLayerOptions): Layer[] {
       },
       getSize: (d: Vessel) => {
         if (d.id === selectedVesselId) return 36;
-        if (isAttributed && d.id === topCandidateId) return 38; // Top candidate visual priority
-        if (isInvestigationActive && candidateSet.has(d.id)) return 30;
-        return isInvestigationActive ? 24 : 28; // Subdued background vessels during active investigation
+        if ((isAttributed || isTraceSourceActive) && d.id === topCandidateId) {
+          return isTraceSourceActive ? 42 : 38; // Enhanced protagonist visual priority in Trace Source
+        }
+        if (isInvestigationActive && candidateSet.has(d.id)) {
+          return isTraceSourceActive ? 26 : 30;
+        }
+        return isTraceSourceActive ? 20 : (isInvestigationActive ? 24 : 28); // Subdued background vessels
       },
       getColor: (d: Vessel) => {
         if (!isInvestigationActive) return [255, 255, 255, 255];
-        if (d.id === selectedVesselId || d.id === topCandidateId || candidateSet.has(d.id)) {
+        if (d.id === selectedVesselId || d.id === topCandidateId) {
           return [255, 255, 255, 255];
         }
-        return [255, 255, 255, 155]; // Restrained background opacity
+        if (candidateSet.has(d.id)) {
+          return [255, 255, 255, isTraceSourceActive ? 180 : 255];
+        }
+        return [255, 255, 255, isTraceSourceActive ? 110 : 155]; // Highly subdued background in Trace Source
       },
       sizeScale: 1,
-      sizeMinPixels: 16,
-      sizeMaxPixels: 44,
+      sizeMinPixels: 14,
+      sizeMaxPixels: 48,
       getAngle: (d: Vessel) => (360 - (d.heading % 360)) % 360,
       transitions: {
         getPosition: { duration: 150, easing: (t: number) => t },
@@ -233,9 +242,9 @@ export function createVesselLayers(options: VesselLayerOptions): Layer[] {
         }
       },
       updateTriggers: {
-        getIcon: [selectedVesselId, topCandidateId, Array.from(candidateSet).join(','), isInvestigationActive, isAttributed],
-        getSize: [selectedVesselId, topCandidateId, Array.from(candidateSet).join(','), isInvestigationActive, isAttributed],
-        getColor: [selectedVesselId, topCandidateId, Array.from(candidateSet).join(','), isInvestigationActive, isAttributed],
+        getIcon: [selectedVesselId, topCandidateId, Array.from(candidateSet).join(','), isInvestigationActive, isAttributed, isTraceSourceActive],
+        getSize: [selectedVesselId, topCandidateId, Array.from(candidateSet).join(','), isInvestigationActive, isAttributed, isTraceSourceActive],
+        getColor: [selectedVesselId, topCandidateId, Array.from(candidateSet).join(','), isInvestigationActive, isAttributed, isTraceSourceActive],
       },
     })
   );
