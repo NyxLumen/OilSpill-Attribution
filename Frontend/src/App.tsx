@@ -18,24 +18,21 @@ import { MapArea } from '@/components/map';
  */
 function App() {
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden">
-      {/* Top Header */}
+    <div className="min-h-[100dvh] h-[100dvh] w-full relative overflow-hidden bg-ocean-900 select-none">
+      {/* Map Viewport - Full width/height background canvas */}
+      <MapArea />
+
+      {/* Floating Top Bar (Logo, Search Pill, Live Status, Alerts) */}
       <Header />
 
-      {/* Main Content Area - Map First */}
-      <div className="flex-1 relative overflow-hidden">
-        {/* Map Viewport - Full width/height */}
-        <MapArea />
+      {/* Floating Left Navigation & Layers Panels */}
+      <Sidebar />
 
-        {/* Floating Navigation Panels */}
-        <Sidebar />
+      {/* Floating Right Intelligence Panels */}
+      <DetailPanel />
 
-        {/* Floating Detail Panel */}
-        <DetailPanel />
-
-        {/* Floating Status Bar */}
-        <StatusBar />
-      </div>
+      {/* Floating Bottom Telemetry Status Bar */}
+      <StatusBar />
     </div>
   );
 }

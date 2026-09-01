@@ -99,25 +99,23 @@ Phase 10  Final Polish / SIH Demo           NOT STARTED
 - [x] Responsive panel behavior
 - [x] Build verification
 
-## Phase 1.2 — Visual Direction Pass
+## Phase 1.2 — Visual Direction & Reference Alignment Pass
 
-**Status: COMPLETE AS DIRECTION PASS**
+**Status: COMPLETE (Aligned with `reference.png`)**
 
+- [x] Full-bleed map canvas (`min-h-[100dvh]` with open overlay layout)
+- [x] Floating header islands (3-wave logo, standalone search pill, live UTC timestamp + pulsing LIVE status, notification bell)
+- [x] Left navigation card (active blue capsule states) & Layers card (small-caps tracked header, layer icons, eye toggles)
+- [x] Dual right intelligence stack (Oil Spill Detected card with solid navy `TRACE SOURCE` CTA + Top Candidate card with photographic ship asset preview)
+- [x] 2-row multi-column floating status bar (Metric on top, uppercase label underneath, hairline dividers)
+- [x] Floating circular bottom-right map controls (Orientation compass, vertical zoom pill, 3D toggle)
+- [x] Maritime ocean water palette styling override
 - [x] Light maritime palette
-- [x] Map-first composition
-- [x] White/translucent floating panels
-- [x] Reference-inspired header/search
-- [x] Navigation/layer panels
-- [x] Incident intelligence card
-- [x] Candidate vessel card
-- [x] Floating telemetry strip
-- [x] Floating map controls
+- [x] White/translucent floating glass panels with subtle border highlights
 - [x] Deep navy typography
-- [x] Blue accent states
+- [x] Blue/cyan accent states
 - [x] Green LIVE state
 - [x] Warning/critical states
-
-**Visual note:** The visual system is intentionally not frozen. Final typography, spacing, density, panel placement, map contrast, motion, and interaction polish will be refined after real map/data layers exist.
 
 ---
 
