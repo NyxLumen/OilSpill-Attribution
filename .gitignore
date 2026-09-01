@@ -1,7 +1,3 @@
-# Secrets — never commit credentials or API tokens
-.env
-.env.*
-!.env.example
 
 # Local acquisition workspace (large raw AIS downloads stay out of git)
 data/raw/
@@ -17,3 +13,19 @@ logs
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+myenv/
+# Environment / secrets
+.env
+.env.*
+
+# Generated backend outputs
+Backend/outputs/
+
+# Temporary files
+*.tmp
+*.log

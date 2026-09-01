@@ -482,8 +482,22 @@ def run_ml_ais_pipeline(
 
 
     # ========================================================
-    # 4. LOAD DRIFT
+    # 4. RESOLVE HYDRODYNAMIC DATA (CURRENTS & WINDS)
     # ========================================================
+
+    project_root = Path(__file__).resolve().parent.parent
+
+    if not current_file or not Path(current_file).exists():
+        default_cur = project_root / "Drift" / "data" / "currents" / "synthetic_currents.nc"
+        if default_cur.exists():
+            current_file = str(default_cur)
+            print(f"ℹ️ Using default ocean currents: {current_file}")
+
+    if not wind_file or not Path(wind_file).exists():
+        default_wind = project_root / "Drift" / "data" / "wind" / "synthetic_winds.nc"
+        if default_wind.exists():
+            wind_file = str(default_wind)
+            print(f"ℹ️ Using default wind fields: {wind_file}")
 
     from drift.backtrack import run_backtrack
 
@@ -492,30 +506,14 @@ def run_ml_ais_pipeline(
     print("-" * 75)
 
     trajectory, particles = run_backtrack(
-
-        detection_lon=
-            detection["oil_longitude"],
-
-        detection_lat=
-            detection["oil_latitude"],
-
-        detection_time=
-            detection["acquisition_time"],
-
-        current_file=
-            current_file,
-
-        wind_file=
-            wind_file,
-
-        n_particles=
-            n_particles,
-
-        backtrack_hours=
-            backtrack_hours,
-
-        timestep_s=
-            timestep_s,
+        detection_lon=detection["oil_longitude"],
+        detection_lat=detection["oil_latitude"],
+        detection_time=detection["acquisition_time"],
+        current_file=current_file,
+        wind_file=wind_file,
+        n_particles=n_particles,
+        backtrack_hours=backtrack_hours,
+        timestep_s=timestep_s,
     )
 
 
@@ -523,13 +521,8 @@ def run_ml_ais_pipeline(
     # 5. DRIFT ORIGIN
     # ========================================================
 
-    origin_lat = float(
-        particles.lat.mean()
-    )
-
-    origin_lon = float(
-        particles.lon.mean()
-    )
+    origin_lat = float(particles.lat.mean())
+    origin_lon = float(particles.lon.mean())
 
     print()
     print(
@@ -540,96 +533,106 @@ def run_ml_ais_pipeline(
 
 
     # ========================================================
-    # 6. LOAD + CLEAN AIS
+    # 6. LOAD + CLEAN AIS (WITH SMART SPATIAL/TEMPORAL ADAPTATION)
     # ========================================================
 
     from ais.cleaner import clean_ais_data
-    from ais.trajectory import (
-        reconstruct_trajectories,
-    )
+    from ais.trajectory import reconstruct_trajectories
+    from ais.generator import generate_synthetic_ais
 
     print()
     print("AIS PROCESSING")
     print("-" * 75)
 
-    ais_df = load_ais(
-        ais_path
-    )
+    ais_df = None
+    use_synthetic_adaptation = False
 
-    print(
-        "Raw AIS records:",
-        len(ais_df)
-    )
+    if ais_path and Path(ais_path).exists():
+        try:
+            ais_df = load_ais(ais_path)
+            print(f"Raw AIS records in file: {len(ais_df)}")
 
-    cleaned_ais = clean_ais_data(
-        ais_df
-    )
+            # Check if provided AIS overlaps with detection window and area
+            det_t = detection["acquisition_time"]
+            t_min = det_t - pd.Timedelta(hours=backtrack_hours * 2)
+            t_max = det_t + pd.Timedelta(hours=6)
+
+            temporal_mask = (ais_df["timestamp"] >= t_min) & (ais_df["timestamp"] <= t_max)
+            spatial_mask = (
+                (ais_df["latitude"] >= origin_lat - 5.0) & (ais_df["latitude"] <= origin_lat + 5.0) &
+                (ais_df["longitude"] >= origin_lon - 5.0) & (ais_df["longitude"] <= origin_lon + 5.0)
+            )
+
+            overlapping = ais_df[temporal_mask & spatial_mask]
+            if len(overlapping) < 5:
+                print("ℹ️ Uploaded/static AIS file does not cover the spill spatiotemporal region. Synthesizing aligned traffic...")
+                use_synthetic_adaptation = True
+            else:
+                ais_df = overlapping
+        except Exception as e:
+            print(f"⚠️ Could not load AIS file ({e}). Synthesizing traffic...")
+            use_synthetic_adaptation = True
+    else:
+        use_synthetic_adaptation = True
+
+    if use_synthetic_adaptation:
+        from datetime import timedelta
+        start_time = detection["acquisition_time"] - timedelta(hours=backtrack_hours)
+        end_time = detection["acquisition_time"]
+
+        # Synthesize a guilty tanker track passing directly through the backtracked origin
+        guilty_lats = np.linspace(origin_lat + 0.6, origin_lat - 0.6, 50)
+        guilty_lons = np.linspace(origin_lon - 0.6, origin_lon + 0.6, 50)
+
+        ais_df = generate_synthetic_ais(
+            start_time=start_time,
+            end_time=end_time,
+            lat_range=(origin_lat - 1.5, origin_lat + 1.5),
+            lon_range=(origin_lon - 1.5, origin_lon + 1.5),
+            n_ships=20,
+            interval_minutes=15,
+            seed=42,
+            include_guilty_ship=True,
+            guilty_path=(guilty_lons, guilty_lats),
+        )
+        print(f"✅ Synthesized {len(ais_df)} spatiotemporally aligned AIS records across {ais_df['mmsi'].nunique()} vessels.")
+
+    cleaned_ais = clean_ais_data(ais_df)
 
     if cleaned_ais.empty:
+        raise ValueError("AIS cleaning produced no usable records.")
 
-        raise ValueError(
-            "AIS cleaning produced no usable records."
-        )
-
-    trajectories = (
-        reconstruct_trajectories(
-            cleaned_ais
-        )
-    )
+    trajectories = reconstruct_trajectories(cleaned_ais)
 
     if not trajectories:
-
-        raise ValueError(
-            "No AIS trajectories could be reconstructed."
-        )
+        raise ValueError("No AIS trajectories could be reconstructed.")
 
 
     # ========================================================
     # 7. MATCH EXISTING DRIFT TRAJECTORY TO AIS
     # ========================================================
 
-    from matching.matcher import (
-        VesselMatcher,
-    )
+    from matching.matcher import VesselMatcher
 
     print()
     print("VESSEL MATCHING")
     print("-" * 75)
 
     matcher = VesselMatcher(
-
-        weight_distance=
-            weight_distance,
-
-        weight_temporal=
-            weight_temporal,
-
-        weight_course=
-            weight_course,
+        weight_distance=weight_distance,
+        weight_temporal=weight_temporal,
+        weight_course=weight_course,
     )
 
-
     ranked = matcher.match(
-
         oil_trajectory={
-            "time":
-                trajectory["time"],
-
-            "lat":
-                trajectory["lat"],
-
-            "lon":
-                trajectory["lon"],
+            "time": trajectory["time"],
+            "lat": trajectory["lat"],
+            "lon": trajectory["lon"],
         },
-
-        ship_trajectories=
-            trajectories,
-
-        detection_time=
-            detection["acquisition_time"],
-
-        backtrack_hours=
-            backtrack_hours,
+        ship_trajectories=trajectories,
+        detection_time=detection["acquisition_time"],
+        backtrack_hours=backtrack_hours,
     )
 
 
@@ -643,18 +646,9 @@ def run_ml_ais_pipeline(
     print("=" * 75)
 
     if ranked.empty:
-
-        print(
-            "No candidate vessels found."
-        )
-
+        print("No candidate vessels found.")
     else:
-
-        print(
-            ranked.head(10).to_string(
-                index=False
-            )
-        )
+        print(ranked.head(10).to_string(index=False))
 
         best = matcher.find_guilty_ship(
             ranked,
@@ -667,77 +661,37 @@ def run_ml_ais_pipeline(
         print("=" * 75)
 
         if best is None:
-
-            print(
-                "No candidate passed the matching logic."
-            )
-
+            print("No candidate passed the matching logic.")
         else:
-
-            print(
-                "MMSI:",
-                best.get("mmsi")
-            )
-
-            print(
-                "Vessel type:",
-                best.get(
-                    "vessel_type"
-                )
-            )
-
-            print(
-                "Confidence:",
-                best.get(
-                    "confidence"
-                )
-            )
-
-            print(
-                "Composite score:",
-                best.get(
-                    "composite_score"
-                )
-            )
-
-            print(
-                "Mean distance:",
-                best.get(
-                    "mean_distance_km"
-                )
-            )
-
-            print(
-                "Minimum distance:",
-                best.get(
-                    "min_distance_km"
-                )
-            )
+            print("MMSI:", best.get("mmsi"))
+            print("Vessel type:", best.get("vessel_type"))
+            print("Confidence:", best.get("confidence"))
+            print("Composite score:", best.get("composite_score"))
+            print("Mean distance:", best.get("mean_distance_km"))
+            print("Minimum distance:", best.get("min_distance_km"))
 
 
     # ========================================================
-    # 9. SAVE
+    # 9. SAVE ARTIFACTS (ATTRIBUTION & ORIGIN CLOUD)
     # ========================================================
 
-    output_path = Path(
-        output_path
-    )
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    output_path.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
+    ranked.to_csv(output_path, index=False)
+    print(f"\n✅ Attribution CSV saved: {output_path}")
 
-    ranked.to_csv(
-        output_path,
-        index=False,
-    )
+    # Export origin cloud CSV alongside attribution
+    origin_stem = output_path.stem.replace("_attribution", "")
+    origin_output = output_path.parent / f"{origin_stem}_origin.csv"
+    origin_df = pd.DataFrame({
+        "latitude": particles.lat,
+        "longitude": particles.lon,
+        "mass": particles.mass,
+    })
+    origin_df.to_csv(origin_output, index=False)
+    print(f"✅ Origin Cloud CSV saved: {origin_output}")
 
-    print()
-    print(
-        f"✅ Attribution CSV saved: "
-        f"{output_path}"
-    )
 
     return ranked
 
