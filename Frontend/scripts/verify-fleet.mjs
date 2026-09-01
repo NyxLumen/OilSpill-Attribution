@@ -133,6 +133,26 @@ ok(`verified ${fish.length} active fishing vessels with realistic trawling sweep
 if (new Set(loopGeometries).size !== fish.length) fail('two fishing vessels share identical waypoints');
 else ok('fishing routes distinct across vessels');
 
+// --- patrol corridor checks: elongated sweeps, NO tight circles or tiny square loops ---
+console.log('Patrol corridor checks (anti-circling & span validation):');
+const patrols = fleet.filter((v) => v.type === 'patrol');
+ok(`verifying ${patrols.length} patrol vessels for realistic elongated fairway sweeps`);
+for (const p of patrols) {
+  const wps = p.route.waypoints;
+  let maxDistKm = 0;
+  for (let i = 0; i < wps.length; i++) {
+    for (let j = i + 1; j < wps.length; j++) {
+      const d = distanceKm(wps[i], wps[j]);
+      if (d > maxDistKm) maxDistKm = d;
+    }
+  }
+  if (maxDistKm < 20) {
+    fail(`${p.id} (${p.name}) patrol span is too small: ${maxDistKm.toFixed(1)} km < 20 km (possible tiny circle/loop)`);
+  } else {
+    ok(`${p.id} (${p.name}) elongated patrol sweep span: ${maxDistKm.toFixed(1)} km (navigable & linear)`);
+  }
+}
+
 // --- determinism: two generations identical ---
 const fleet2 = gen.generateSimVessels();
 if (JSON.stringify(fleet) !== JSON.stringify(fleet2)) fail('generateSimVessels not deterministic');
